@@ -127,7 +127,7 @@ export default function DashboardPage() {
     // --- 1. SETUP SOCKET ---
   useEffect(() => {
 
-    socketRef.current = io("http://localhost:3001");
+    socketRef.current = io("http://213.173.102.223:13308");
     // socket = io("http://localhost:3001");
 
     socketRef.current.on("connect", () => {

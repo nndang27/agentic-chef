@@ -132,9 +132,10 @@ async function startServer() {
   });
 
   // 4. Mở cổng
-  httpServer.listen(PORT, () => {
+httpServer.listen(PORT, "0.0.0.0", () => {
     console.log(`\n-----------------------------------`);
-    console.log(`🚀 WebSocket Server running at http://127.0.0.1:${PORT}`);
+    console.log(`🚀 WebSocket Server running on 0.0.0.0:${PORT}`);
+    console.log(`👉 External URL: Kiểm tra Public IP của RunPod`);
     console.log(`-----------------------------------\n`);
   });
 }
