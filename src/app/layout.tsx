@@ -1,7 +1,11 @@
 import "~/styles/globals.css";
+import "@uploadthing/react/styles.css";
 
 import { type Metadata } from "next";
 import { Geist } from "next/font/google";
+import { ClerkProvider } from "@clerk/nextjs";
+import TopNav from "./_components/topnav";
+import { Toaster } from "~/components/ui/sonner";
 
 export const metadata: Metadata = {
   title: "Create T3 App",
@@ -16,10 +20,27 @@ const geist = Geist({
 
 export default function RootLayout({
   children,
-}: Readonly<{ children: React.ReactNode }>) {
+  modal,
+}: Readonly<{ 
+  children: React.ReactNode;
+  modal: React.ReactNode;
+
+}>) {
   return (
-    <html lang="en" className={`${geist.variable}`}>
-      <body>{children}</body>
-    </html>
+    <ClerkProvider>
+      <html lang="en" className={`${geist.variable}`}>
+        <body>
+          <div className="grid h-screen grid-rows-[auto,1fr, 1fr, 2fr]">
+            <TopNav />
+            <main className="overflow-y-scroll ">    {children}</main>
+          </div>
+          {modal}
+          <div id="modal-root"/>
+          <Toaster/>
+        </body>
+      </html>
+    </ClerkProvider>
   );
 }
+
+

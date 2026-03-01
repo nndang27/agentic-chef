@@ -1,0 +1,43 @@
+[{
+  "id": 7,
+  "title": "Beef Rump Steak Pho",
+  "image": "https://images.unsplash.com/photo-1547592180-85f173990554?q=80&w=2070&auto=format&fit=crop",
+  "serves": [ { "value": 4, "unit": "people" } ],
+  "cook_time": [ { "value": 25, "unit": "minute" } ],
+  "prep_time": null,
+  "ingredients": [
+    {
+      "item": "Coles Australian No Added Hormones Beef Rump Steak",
+      "amount": "750g",
+      "notes": null
+    },
+    {
+      "item": "Coles Vietnamese Inspired Beef Pho Stock",
+      "amount": "1L",
+      "notes": null
+    },
+    { "item": "Asian Pak Choy", "amount": null, "notes": "quartered" },
+    { "item": "Rice Noodles", "amount": "250g", "notes": null },
+    { "item": "Coriander Sprigs", "amount": "1/3 cup", "notes": null }
+  ],
+  "steps": [
+    {
+      "step": 1,
+      "action": "Heat a large non-stick frying pan over high heat. Cook the beef for 2-3 mins each side for medium or until cooked to your liking. Set aside for 5 mins to rest. Thinly slice.",
+      "time_minutes": null
+    },
+    {
+      "step": 2,
+      "action": "Meanwhile, place the stock in a large saucepan. Bring to the boil over medium heat. Remove the pan from heat. Add the pak choy. Stir until the pak choy just wilts.",
+      "time_minutes": null
+    },
+    {
+      "step": 3,
+      "action": "Prepare the noodles following packet directions. Drain. Divide the noodles among serving bowls. Ladle over the broth and pak choy. Top with the beef. Sprinkle with coriander to serve.",
+      "time_minutes": null
+    }
+  ],
+  "nutrition_estimate": { "calories": 519, "protein": ">46g", "fat": ">6g", "sugar": "1g (1%)" },
+  "chef_tips": "Do not overmix."
+}
+]
