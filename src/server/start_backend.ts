@@ -8,7 +8,7 @@ import { initRedisIndex } from "./lib/redis"; // Uncomment nếu cần
 import { createClerkClient } from "@clerk/backend";
 import { verifyToken } from "@clerk/backend";
 // Cấu hình Port
-const PORT = process.env.BACKEND_PORT || 3001;
+const PORT = process.env.NEXT_PUBLIC_BACKEND_PORT || 3000;
 
 const clerkClient = createClerkClient({
   secretKey: process.env.CLERK_SECRET_KEY, 
@@ -62,6 +62,7 @@ io.use(async (socket, next) => {
     }
   });
 
+  const activeControllers = new Map<string, AbortController>();
   // 3. Lắng nghe kết nối Socket
   io.on("connection", (socket) => {
     console.log(`🔌 Client connected: ${socket.id}`);
@@ -69,13 +70,22 @@ io.use(async (socket, next) => {
     // Giả lập session ID và User ID (Thực tế nên gửi từ client lên)
     let config = {
       configurable: {
-        thread_id: "session_10", 
+        thread_id: socket.id, 
         user_id: userId,
         user_current_location: null
       }
     };
 
     socket.on("chat_message", async (payload: { msg: string, userCurrentLocation: any, isMemoryMode:boolean }) => {
+      if (activeControllers.has(socket.id)) {
+        activeControllers.get(socket.id)?.abort();
+        activeControllers.delete(socket.id);
+      }
+
+      // B. Tạo cầu dao mới cho request này
+      const controller = new AbortController();
+      activeControllers.set(socket.id, controller); // Lưu lại
+      
       try {
         const { msg, userCurrentLocation, isMemoryMode } = payload;
         console.log(`📩 Received: ${msg}`);
@@ -91,6 +101,7 @@ io.use(async (socket, next) => {
         const eventStream = await app.streamEvents(inputs, {
           ...config,
           version: "v2",
+          signal: controller.signal
         });
 
         let isChat = 0;
@@ -172,14 +183,39 @@ io.use(async (socket, next) => {
         socket.emit("stream_done");
         console.log("✅ Stream finished");
 
-      } catch (error) {
-        console.error("❌ Error processing message:", error);
-        socket.emit("error", "Sorry, something went wrong on the server.");
+      } catch (error:any) {
+          if (error.name === 'AbortError' || error.message?.includes('AbortError')) {
+            console.log(`🛑 Stream manually stopped by user: ${socket.id}`);
+            socket.emit("stream_chunk", "\n[Đã dừng bởi người dùng]");
+            socket.emit("stream_done"); // Báo front-end là xong rồi (dù là bị hủy)
+          } else {
+            console.error("❌ Error processing message:", error);
+            socket.emit("error", "Sorry, something went wrong on the server.");
+          }
+      }
+      finally {
+        // F. Dọn dẹp Controller sau khi xong
+        activeControllers.delete(socket.id);
+      }
+    });
+
+    socket.on("interrupt_agent", () => {
+      console.log(`⚠️ Received interrupt signal from: ${socket.id}`);
+      const controller = activeControllers.get(socket.id);
+      if (controller) {
+        controller.abort(); // <--- Gạt cầu dao!
+        activeControllers.delete(socket.id);
+        console.log("✂️ Agent execution aborted.");
       }
     });
 
     socket.on("disconnect", () => {
       console.log(`❌ Client disconnected: ${socket.id}`);
+      // Cleanup nếu client thoát đột ngột
+      if (activeControllers.has(socket.id)) {
+        activeControllers.get(socket.id)?.abort();
+        activeControllers.delete(socket.id);
+      }
     });
   });
 

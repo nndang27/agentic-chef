@@ -117,6 +117,8 @@ export default function DashboardPage() {
   const [agentStatus, setAgentStatus] = useState<string | null>(null);
 
 
+  const abortControllerRef = useRef<AbortController | null>(null);
+
   // const socketRef = useRef<Socket | null>(null);
 
   // State dành riêng cho Map
@@ -173,7 +175,6 @@ const executeSearch = async () => {
       // if (formData?.destinationId) {
       //   destinationLocation = await getLatLongFromID(formData?.destinationId);
       // }
-      console.log("Location_List", Location_List);
       // 3. Cập nhật State
       setMapDestination({
         optimized_route_map: Location_List,
@@ -214,11 +215,12 @@ useEffect(() => {
   useEffect(() => {
     const connectSocket = async () => {
       const token = await getToken();
-      console.log("userId: ", userId);
-      if (token) {
-        console.log("process.env.BACKEND_IP: ", process.env.BACKEND_IP);
+      // console.log("userId: ", userId);
+      // console.log("process.env.BACKEND_IP: ", process.env.NEXT_PUBLIC_BACKEND_IP);
 
-        socketRef.current = io(`http://213.173.98.25:15810`, { // "http://localhost:3001",
+      if (token) {
+        
+        socketRef.current = io(process.env.NEXT_PUBLIC_BACKEND_IP, { // , `. "http://localhost:3001"
           auth: {
             token: token // Server sẽ đọc cái này ở socket.handshake.auth.token
           }
@@ -359,21 +361,21 @@ useEffect(() => {
     const a = {lat: location.lat, lng: location.lng};
     console.log("a: ", a, socketRef.current);
     socketRef.current?.emit("chat_message", {msg, userCurrentLocation:a, isMemoryMode: isMemoryMode});
-
-    // ------ Sending user location to backend ----
-    
-    // console.log("Toạ độ:", location.lat, location.lng, location);
-    // socket.emit("current_userLocation", location);
   };
 
-  // const handleAddToNotion = () => {
-  //   toast({
-  //     title: "Synced to Notion",
-  //     description: "Your meal plan and grocery list have been exported.",
-  //     className: "bg-white border-primary/20 text-slate-800 shadow-lg",
-  //   });
-  // };
 
+  // 2. THÊM HÀM NÀY: Xử lý khi user bấm nút Stop
+  const handleStopGeneration = () => {
+    if (!isGenerating) return;
+
+    // A. Báo cho Backend biết để dừng xử lý (Tiết kiệm token & tài nguyên)
+    socketRef.current?.emit("interrupt_agent"); 
+
+    // B. Cập nhật giao diện ngay lập tức
+    setIsGenerating(false);
+    setAgentStatus("Stopped by user");
+    
+  };
 
   const handleSaveClick = async (recipeFromChild: any, index: number) => {
 
@@ -417,6 +419,7 @@ useEffect(() => {
           onSendMessage={handleSendMessage} 
           isMemoryMode={isMemoryMode}        // Truyền giá trị xuống để hiển thị
           onToggleMemory={setIsMemoryMode}
+          onStop={handleStopGeneration}
         />
       </div>
 

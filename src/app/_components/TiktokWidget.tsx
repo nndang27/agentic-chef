@@ -22,7 +22,6 @@ interface AgentWidgetProps {
 }
 
 export function TikTokAgent({ isLoading, videoUrl }: AgentWidgetProps) {
-  console.log("isLoading:22 ", isLoading);
   // console.log("videoUrl: ", videoUrl);
   return (
     <div className="relative w-full h-full min-h-[300px] flex flex-col bg-white rounded-xl overflow-hidden border border-slate-200">

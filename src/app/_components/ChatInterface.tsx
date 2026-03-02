@@ -1,9 +1,8 @@
 import { Button } from "../../components/ui/button";
 import { Input } from "../../components/ui/input";
 import { ScrollArea } from "../../components/ui/scroll-area";
-import { Send, Sparkles, User, Loader2 } from "lucide-react"; // Import thêm Loader2
+import { Send, Sparkles, User, Loader2, Square } from "lucide-react"; // Import thêm Loader2
 import { useState, useRef, useEffect } from "react";
-
 import { io, Socket } from "socket.io-client";
 import { Switch } from "../../components/ui/switch"; // Nếu dùng shadcn/ui
 // Hoặc dùng input checkbox thường nếu chưa có component Switch
@@ -19,6 +18,7 @@ interface ChatInterfaceProps {
   onSendMessage: (text: string) => void; 
   isMemoryMode: boolean;
   onToggleMemory: (checked: boolean) => void;
+  onStop?: () => void;
 }
 
 export function ChatInterface({ 
@@ -27,9 +27,13 @@ export function ChatInterface({
   agentStatus, 
   onSendMessage ,
   isMemoryMode,
-  onToggleMemory
+  onToggleMemory,
+  onStop
 }: ChatInterfaceProps){
   const [input, setInput] = useState("");
+
+
+  // const abortControllerRef = useRef<AbortController | null>(null);
 
   // const [isGenerating, setIsGenerating] = useState(false);
   
@@ -54,16 +58,16 @@ export function ChatInterface({
 
   // --- 3. HANDLE SEND ---
   const handleSend = () => {
+      // Chỉ gửi khi có chữ và KHÔNG đang generating
+      // Nếu đang generating mà gọi hàm này thì chặn lại (phòng hờ)
+      if (!input.trim()) return;
+
+      const userText = input;
+      setInput("");
+      onSendMessage(userText);
+    };
 
 
-    if (!input.trim() || isGenerating) return;
-    
-    const userText = input;
-    setInput("");
-
-    onSendMessage(userText);
-
-  };
 
   return (
     <div className="grid grid-rows-[auto_1fr_auto] h-full bg-slate-50 border-r border-slate-200 overflow-hidden">
@@ -164,34 +168,60 @@ export function ChatInterface({
 
       {/* FOOTER */}
       <div className="p-4 bg-white border-t border-slate-200 shrink-0 z-10">
-        <div className="relative">
-          <Input 
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            disabled={isGenerating}
-            onKeyDown={(e) => {
-               if (e.key === "Enter") {
-                  // @ts-ignore
-                  if (e.nativeEvent.isComposing) return;
-                  e.preventDefault();
-                  handleSend();
-               }
-            }}
-            // Placeholder thay đổi theo trạng thái
-            placeholder={isGenerating ? (agentStatus || "Agent is working...") : "Ask anything..."}
-            className="pr-12 py-6 rounded-xl border-slate-200 bg-slate-50 focus-visible:ring-blue-500"
-          />
-          <Button 
-            onClick={handleSend} 
-            disabled={isGenerating}
-            size="icon" 
-            className="absolute right-1 top-1 h-10 w-10 bg-blue-600 hover:bg-blue-700 text-white transition-all"
-          >
-            {isGenerating ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
-          </Button>
-        </div>
-      </div>
+        {/* CONTAINER CHÍNH: 
+            - Đóng vai trò là cái "hộp" visual (Border, Background, Rounded nằm ở đây)
+            - Dùng flex items-center để căn giữa Input và Button theo trục ngang tuyệt đối.
+        */}
+        <div className="flex items-center w-full h-16 rounded-[32px] border border-slate-200 bg-slate-50 px-2 focus-within:ring-2 focus-within:ring-blue-500/20 focus-within:border-blue-500 transition-all">
+          
+              <Input 
+                value={input}
+                onChange={(e) => setInput(e.target.value)}
+                disabled={isGenerating}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                      // @ts-ignore
+                      if (e.nativeEvent.isComposing) return;
+                      e.preventDefault();
+                      if (!isGenerating) handleSend();
+                  }
+                }}
+                placeholder={isGenerating ? (agentStatus || "Agent is working...") : "Ask anything..."}
+                
+                // --- STYLE INPUT MỚI ---
+                // 1. bg-transparent & border-none: Để nó hòa vào container cha
+                // 2. h-full: Chiều cao ăn theo container (100% căn giữa)
+                // 3. focus-visible:ring-0: Tắt viền focus mặc định của shadcn
+                className="flex-1 h-full bg-transparent border-none shadow-none focus-visible:ring-0 text-base px-6 placeholder:text-slate-400" 
+              />
+              
+              <Button 
+                onClick={isGenerating ? onStop : handleSend}
+                disabled={!isGenerating && !input.trim()}
+                size="icon" 
+                
+                // --- STYLE MỚI ---
+                className={`h-11 w-11 shrink-0 rounded-full transition-all duration-200 flex items-center justify-center mr-1 ${
+                  isGenerating 
+                    ? "bg-blue-400 text-white hover:bg-blue-600 shadow-md" // STOP: Màu đỏ (Rõ ràng chức năng dừng)
+                    : input.trim() 
+                      ? "bg-blue-400 text-white hover:bg-blue-600 shadow-lg shadow-blue-200" // SEND: Màu xanh (Tông xuyệt tông)
+                      : "bg-slate-100 text-slate-400 cursor-not-allowed" // DISABLED: Màu xám rất nhạt
+                }`}
+              >
+                {isGenerating ? (
+                  <div className="flex items-center justify-center">
+                      {/* Icon Stop màu trắng */}
+                      <Square className="w-3.5 h-3.5 fill-current" /> 
+                  </div>
+                ) : (
+                  // Icon Send
+                  <Send className="w-5 h-5 ml-0.5" />
+                )}
+              </Button>
+            </div>
+          </div>
 
-    </div>
+      </div>
   );
 }
