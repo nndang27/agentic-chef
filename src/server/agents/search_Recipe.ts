@@ -76,8 +76,8 @@ const createColesUrl = (query:string) => {
 // export const recipeAgentNode = async () => {
 export const recipeAgentNode = async (state: typeof AgentState.State, config: any) => {
   let userQuery = [state.current_dish];
-  console.log("===============================================");
-  console.log("User query dish: \n", userQuery);
+    console.log("**********************************************************************\n");
+    console.time("⏱️ SEARCH RECIPE running TIME:");
   
   let fullContent = "";
   let sourceUrl = "";
@@ -207,8 +207,10 @@ export const recipeAgentNode = async (state: typeof AgentState.State, config: an
         }
             // ---------------------------------------------------------------
     }
-    console.log("==========================================");
-    console.log("ListRecipe: ", ListRecipe);
+    console.log("ListRecipe: \n", ListRecipe);
+    console.timeEnd("⏱️ SEARCH RECIPE running TIME:");
+    console.log("**********************************************************************\n");
+    
     return { 
       finished_branches: ["search_recipe_done"], 
       recipesList: ListRecipe

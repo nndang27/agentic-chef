@@ -4,12 +4,13 @@ import { getRecipeById } from "~/server/db/queries";
 import { IngredientPriceAgent } from "../../_components/IngredientPriceAgent"; // Component hiển thị Coles/Woolies bạn đã viết
 import { CommentSection } from "../../../components/CommentSection"; // Bạn sẽ viết component này sau
 import { LikeButton } from "../../../components/LikeButton";
-
 export default async function RecipeDetailPage({ params }: { params: { id: string } }) {
   const resolvedParams = await params;
   const id = resolvedParams.id;
 
-  const recipeData = await getRecipeById(Number(id));
+  const searched_recipe = await getRecipeById(Number(id));
+  const interaction = searched_recipe?.interaction;
+  const recipeData = searched_recipe?.current_recipe
   console.log("recipeData: ", recipeData);
   if (!recipeData) return <div>Recipe not found</div>;
 
@@ -23,10 +24,15 @@ export default async function RecipeDetailPage({ params }: { params: { id: strin
       {/* 1. Header & Image */}
       <section className="space-y-4">
         <img src={recipeData.imageUrl} className="w-full h-[400px] object-cover rounded-3xl" />
-        {/* <div className="flex justify-between items-center">
+        <div className="flex justify-between items-center">
           <h1 className="text-4xl font-bold">{recipeData.title}</h1>
-          <LikeButton recipeId={recipeData.id} />
-        </div> */}
+          {/* <LikeButton recipeId={recipeData.id} /> */}
+          <LikeButton 
+            recipeId={recipeData.id} 
+            initialLikes={interaction?.total_like} 
+            initialIsLiked={interaction?.is_liked} 
+          />
+        </div> 
       </section>
 
       {/* 2. Price Comparison (Sử dụng lại component Agent của bạn) */}

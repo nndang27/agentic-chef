@@ -5,11 +5,17 @@ import { db } from "."; // Import từ file index.ts của bạn
 import { recipes, recipePrices, comments, likes } from "./schema";
 import { auth } from "@clerk/nextjs/server";
 import { eq, desc } from "drizzle-orm";
-import type { RecipeData, RecipePriceData } from "./schema"; // Giả sử bạn export type từ schema hoặc file types riêng
-
+import type { RecipeData, RecipePriceData } from "./schema"; 
+// import {type RecipePriceData} from "../agents/search_Price";
+import { clerkClient } from "@clerk/nextjs/server";
 // Định nghĩa Type đầu vào cho hàm save (bỏ id vì db tự sinh)
 type SaveRecipeInput = Omit<RecipeData, "id">;
 type SavePriceInput = RecipePriceData;
+
+export interface InteractionData {
+  total_like: number;
+  is_liked: boolean;
+}
 
 export async function saveRecipeToDatabase(
   recipeData: SaveRecipeInput,
@@ -72,20 +78,46 @@ export async function saveRecipeToDatabase(
 
 export async function getAllUsersRecipes() {
   try {
+    // 1. Lấy userId của người đang đăng nhập để check xem họ đã like chưa
+    const { userId: currentUserId } = await auth();
+
     const allRecipes = await db.query.recipes.findMany({
-      // Sắp xếp theo thời gian tạo mới nhất lên đầu
       orderBy: [desc(recipes.createdAt)],
-      // Tự động JOIN với bảng giá để lấy thông tin so sánh Coles/Woolworths
       with: {
         priceInfo: true,
+        likes: true, // ⚠️ QUAN TRỌNG: Phải có dòng này mới lấy được danh sách like
       },
     });
 
+    // -------------------------
+    // Logic lấy thông tin User từ Clerk (Giữ nguyên)
+    const userIds = [...new Set(allRecipes.map((r) => r.userId))];
+    
+    // Xử lý trường hợp không có user nào để tránh lỗi gọi Clerk
+    let userMap = new Map();
+    if (userIds.length > 0) {
+        const clerkUsers = await (await clerkClient()).users.getUserList({
+          userId: userIds,
+          limit: 100, 
+        });
+        const usersData = clerkUsers.data;
+        userMap = new Map(usersData.map((user) => [user.id, user]));
+    }
+    // --------------------------
+
     const combinedResults = allRecipes.map((item) => {
-      
-      // Định dạng lại RecipeData khớp với Interface của bạn
+      const author = userMap.get(item.userId);
+
+      // --- LOGIC TÍNH TOÁN LIKE ---
+      const totalLikes = item.likes.length;
+      const isLikedByCurrentUser = currentUserId 
+        ? item.likes.some((like) => like.userId === currentUserId) 
+        : false;
+
+      // 1. Object Recipe (Giữ nguyên Interface RecipeData cũ, KHÔNG thêm like vào đây)
       const recipe: RecipeData = {
         id: item.id,
+        userId: author?.fullName || author?.username || "Unknown User", // Map tên hiển thị
         title: item.title,
         image: item.imageUrl ?? "",
         serves: item.serves,
@@ -97,19 +129,31 @@ export async function getAllUsersRecipes() {
         chef_tips: item.chefTips ?? "",
       };
 
-      // Định dạng lại RecipePriceData từ cột price_data (JSONB) trong DB
-      // Chúng ta ép kiểu (cast) về IngredientPriceList[] để khớp với RecipePriceData
+      // 2. Object Price (Giữ nguyên)
       const ingredient_price: RecipePriceData = {
         IngredientPricePerRecipe: (item.priceInfo?.priceData as IngredientPriceList[]) || []
       };
 
+      // 3. Object Interaction (Chứa thông tin Like tách riêng)
+      const interaction: InteractionData = {
+        total_like: totalLikes,
+        is_liked: isLikedByCurrentUser
+      };
+
+      // RETURN: Trả về 3 object riêng biệt
       return {
         recipe,
         ingredient_price,
+        interaction, // <-- Thông tin like nằm ở đây
       };
     });
     
+    combinedResults.sort((a, b) => {
+      return b.interaction.total_like - a.interaction.total_like;
+    });
+    
     return combinedResults;
+
   } catch (error) {
     console.error("🔴 Lỗi khi lấy tất cả recipes:", error);
     throw new Error("Could not fetch recipes from database");
@@ -119,6 +163,7 @@ export async function getAllUsersRecipes() {
 // Hàm lấy danh sách Recipe của User
 export async function getUserRecipes() {
   const user = await auth();
+  
   if (!user.userId) return [];
 
   const userRecipes = await db.query.recipes.findMany({
@@ -134,8 +179,10 @@ export async function getUserRecipes() {
 
 // Hàm lấy chi tiết 1 Recipe
 export async function getRecipeById(id: number) {
-  const user = await auth();
-  if (!user.userId) throw new Error("Unauthorized");
+  // const user = await auth();
+  // if (!user.userId) throw new Error("Unauthorized");
+
+  const { userId: currentUserId } = await auth();
 
   const recipe = await db.query.recipes.findFirst({
       where: eq(recipes.id, id),
@@ -152,10 +199,22 @@ export async function getRecipeById(id: number) {
       },
     });
 
+  const totalLikes = recipe?.likes.length;
+  const isLikedByCurrentUser = currentUserId 
+    ? recipe?.likes.some((like) => like.userId === currentUserId) 
+    : false;
   console.log("recipe: ", recipe);
+
+
   if (!recipe) return null;
   // Security check: chỉ chủ sở hữu mới xem được (hoặc bỏ nếu public)
-  if (recipe.userId !== user.userId) throw new Error("Unauthorized access to recipe");
+  // if (recipe.userId !== user.userId) throw new Error("Unauthorized access to recipe");
 
-  return recipe;
+  return {
+    interaction:{
+      total_like: totalLikes,
+      is_liked: isLikedByCurrentUser
+    },
+    current_recipe: recipe
+  };
 }

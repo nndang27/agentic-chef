@@ -1,131 +1,192 @@
 import { z } from "zod";
 import { baseLlm } from "../lib/llm";
 import { AgentState } from "../graph/state";
-import { SystemMessage } from "@langchain/core/messages";
+import { SystemMessage , HumanMessage} from "@langchain/core/messages";
 import { UserProfileService } from "../memory/userProfile";
 // Import schema vừa định nghĩa ở trên
 
+// --- SUB-SCHEMAS ---
 
-// Intent: SEARCH_RECIPE
 const SearchRecipeSchema = z.object({
   intent: z.literal("SEARCH_RECIPE"),
-  dish_name: z.string().nullable().describe("The FULL name of the dish including adjectives and constraints (e.g., 'authentic Italian Carbonara no cream'). Return null if not specified."),
+  dish_name: z.string().describe("The full name of the dish, including any specific adjectives or constraints (e.g., 'Healthy Chicken Salad', 'Carbonara no cream')."),
 });
 
-// Intent: SEARCH_VIDEO
 const SearchVideoSchema = z.object({
   intent: z.literal("SEARCH_VIDEO"),
-  dish_name: z.string().nullable().describe("The FULL search query for the video, including modifiers (e.g., 'no cream', 'vegan'). Return null if not specified."),
+  dish_name: z.string().describe("The search query for the video. CRITICAL: If the user uses pronouns like 'it' or 'that', you MUST resolve this to the specific dish name from the chat history."),
 });
 
-// Intent: SEARCH_MAP
-const SearchMapSchema = z.object({
-  intent: z.literal("SEARCH_MAP"),
-  
-  origin_address: z.string().nullable()
-    .describe("The starting location (e.g., '100 George St'). Return null if NOT explicitly mentioned as a starting point."),
-  
-  destination_address: z.string().nullable()
-    .describe("The target area or final destination (e.g. 'Parramatta' in 'on way to Parramatta', or 'Zetland' in 'near Zetland'). DO NOT include the object name like 'Coles' or 'Supermarket' here."),
-  
-  brand_preference: z.enum(["Coles", "Woolworths", "Any"]).nullable()
-    .describe("The preferred supermarket brand. Logic: 'Not Coles' -> 'Woolworths'. 'Not Woolies' -> 'Coles'. No preference -> 'Any'."),
-});
-
-// Intent: SEARCH_PRICE
 const SearchPriceSchema = z.object({
   intent: z.literal("SEARCH_PRICE"),
-  specific_ingredients: z.array(z.string()).optional().describe("List of specific ingredients to check price for."),
+  dependency_mode: z.enum(["direct", "depend_on_recipe"]).describe("Set to 'depend_on_recipe' if the user asks for the total cost of a DISH (requires recipe first). Set to 'direct' if the user asks for the price of specific items."),
+  specific_ingredients: z.array(z.string()).optional().describe("List of specific ingredients if dependency_mode is 'direct'. Leave empty if 'depend_on_recipe'."),
 });
 
-// Intent: GENERAL_CHAT
+const SearchMapSchema = z.object({
+  intent: z.literal("SEARCH_MAP"),
+  origin_address: z.string().nullable().describe("The user's starting point (if explicitly mentioned)."),
+  destination_address: z.string().nullable().describe("The target destination or area the user wants to go to."),
+  brand_preference: z.enum(["Coles", "Woolworths", "Any"]).nullable().describe("Preferred supermarket brand based on user input or negation logic."),
+});
+
 const GeneralChatSchema = z.object({
   intent: z.literal("GENERAL_CHAT"),
-  user_prompt: z.string().describe("The user's input prompt is kept entirely unchanged."),
+  type: z.enum(["greeting", "consultation", "clarification", "small_talk"]).describe("Classification of the non-search interaction."),
+  response_guideline: z.string().optional().describe("Brief instruction on how the Chat Agent should respond (e.g., 'Suggest 3 dinner options')."),
 });
 
-// --- Create the Union ---
+// --- UNION ---
 const IntentItemSchema = z.discriminatedUnion("intent", [
-  SearchRecipeSchema,
-  SearchVideoSchema,
-  SearchMapSchema,
-  SearchPriceSchema,
-  GeneralChatSchema,
+  SearchRecipeSchema, SearchVideoSchema, SearchMapSchema, SearchPriceSchema, GeneralChatSchema,
 ]);
 
+// --- MAIN OUTPUT SCHEMA ---
 export const SupervisorOutputSchema = z.object({
-  reasoning: z.string().describe("Explain why these intents were chosen based on user input."),
-  intents: z.array(IntentItemSchema).describe("List of detailed actionable intents."),
+  // STEP 1: CLASSIFICATION
+  classification_group: z.enum(["SINGLE_INTENT", "COMBO_INTENT", "VAGUE_GENERAL", "CONTEXTUAL"])
+    .describe("Classify the user's request into one of the 4 logic groups."),
+  
+  // STEP 2: REASONING
+  reasoning: z.string().describe("Briefly explain why this group was chosen and how intents were derived."),
+  
+  // STEP 3: ACTION LIST
+  intents: z.array(IntentItemSchema).describe("The list of specific actionable intents, ordered by execution priority."),
 });
 // ==========================================================================================
 // ================================== ========================================================
 
-
-
 const SYSTEM_PROMPT = `
-You are the Orchestrator of a Cooking Assistant App. Your sole purpose is to route user input to the correct specific agent(s) and extract PRECISE parameters.
+You are the **Master Orchestrator** of an intelligent Cooking Assistant App.
+Your objective is to analyze User Input + Chat History + (Optional) Long-term Context, classify the request into a specific **Logic Group**, and route it to the correct agents.
 
-### CRITICAL ROUTING RULES:
+### INPUT DATA STRUCTURE:
+1. **Context Data** (Optional): User Profile & Knowledge Graph (Past habits, preferences). Use this to resolve VAGUE requests (e.g., "Dinner" -> Check what they ate yesterday to suggest something different).
+2. **Chat History**: Last 3 turns. Crucial for pronouns ("it", "that").
+3. **Current Input**: The immediate command to process.
 
-1. **SEARCH_RECIPE & SEARCH_VIDEO (Entity Extraction)**:
-   - **Capture Modifiers**: You MUST capture specific constraints in 'dish_name'.
-     - Input: "Carbonara no cream" -> dish_name: "Carbonara no cream" (NOT just "Carbonara").
-     - Input: "Authentic Italian Pizza" -> dish_name: "Authentic Italian Pizza".
+---
 
-2. **SEARCH_MAP (Location Logic)**:
-   - **Origin**: Where the user is *starting* or *leaving from* (e.g., "from the gym", "at 100 George St").
-   - **Destination**: The *final destination* or the *target area* for the search.
-     - Rule: "On my way to [X]" -> Destination is **[X]**.
-     - Rule: "Near [Y]" -> Destination is **[Y]**.
-     - NEVER put the store name (e.g., "Coles") inside 'destination_address'.
-   - **Brand Logic (Negation Handling)**:
-     - "Coles" -> "Coles"
-     - "Woolworths" / "Woolies" -> "Woolworths"
-     - "Not Coles" -> "Woolworths" (Implies the alternative).
-     - "Not Woolworths" -> "Coles".
-     - "Grocery store" / "Supermarket" -> "Any".
+### PART 1: CLASSIFICATION LOGIC (You must choose ONE Group)
 
-3. **SEARCH_PRICE (Cost & Budgeting)**:
-   - Trigger this when user asks about the price, cost, budget, or "how much" for ingredients.
-   - If the user asks about "price of ingredients" for a specific dish (without naming specific items like "milk"), trigger this intent with an empty list [].
-   - **Combined Intent**: Ideally, users often ask for a recipe AND its price. Return BOTH intents in the list.
+#### GROUP 1: SINGLE_INTENT (Clear & Direct)
+- **Definition**: User asks for ONE specific task with clear entities.
+- **Examples**: 
+  - "How to make Pho?" -> SEARCH_RECIPE.
+  - "Price of 1kg beef" -> SEARCH_PRICE (direct).
+  - "Where is the nearest Coles?" -> SEARCH_MAP.
 
-4. **GENERAL_CHAT**:
-   - Only use for greetings or identity questions. If ANY cooking/shopping intent exists, use specific agents.
+#### GROUP 2: COMBO_INTENT (Complex, Multi-Step & Dependent)
+- **Definition**: User asks for multiple things (2, 3, or 4 actions) OR a request that logically triggers a dependency chain.
+- **THE "RECIPE FIRST" ANCHOR**:
+  - If the user wants to cook, buy ingredients, or check the price of a DISH, you MUST start with **SEARCH_RECIPE** to generate the necessary data (ingredients/context) for subsequent steps.
+
+- **STACKING RULES (Combine these logic blocks):**
+  1. **Visual need**: If user wants to "watch", "see", or "video" -> Add **SEARCH_VIDEO**.
+  2. **Budget need**: If user asks "cost", "price", or "how much" for the **dish** -> Add **SEARCH_PRICE** (set dependency_mode="depend_on_recipe").
+  3. **Shopping need**: If user asks "where to buy", "shop", or "market" for the ingredients -> Add **SEARCH_MAP**.
+
+- **COMPLEX CHAIN EXAMPLES**:
+  - **3-Step (Cook + Budget + Shop)**: "How to make Pho, how much does it cost, and where to buy ingredients?"
+    - **Output**: [SEARCH_RECIPE, SEARCH_PRICE, SEARCH_MAP]
+  - **3-Step (Cook + Video + Budget)**: "Show me recipe and video for Pizza, and is it expensive?"
+    - **Output**: [SEARCH_RECIPE, SEARCH_VIDEO, SEARCH_PRICE]
+  - **4-Step (The "Full Package")**: "I want to make Bun Cha. Show me the recipe, a video guide, calculate the total price, and find the nearest Coles."
+    - **Output**: [SEARCH_RECIPE, SEARCH_VIDEO, SEARCH_PRICE, SEARCH_MAP]
+
+- **STRICT PRIORITY ORDER**:
+  - Regardless of the user's sentence structure, ALWAYS output intents in this logical order:
+  - **1. RECIPE** (Source of Truth) -> **2. VIDEO** (Visual) -> **3. PRICE** (Calculation) -> **4. MAP** (Action).
+
+#### GROUP 3: VAGUE_GENERAL (Consultation & Chat)
+- **Definition**: 
+  - Open-ended questions ("What should I eat today?", "Suggest a dinner").
+  - Greetings / Identity ("Hi", "Who are you?").
+  - Knowledge questions NOT about cooking instructions ("Where does Pizza originate?").
+- **Action**: DO NOT generate Search Intents. Route to **GENERAL_CHAT**.
+- **Reasoning**: We cannot search for a recipe if the dish name is not decided yet. The Chat Agent must consult the user first.
+
+#### GROUP 4: CONTEXTUAL (Memory Reference)
+- **Definition**: The user uses **pronouns** like "it", "that", "the video", "the price", or "previous one".
+- **Action**: 
+  - Look at **Chat History** to find the *most recent Dish Name*.
+  - **RESOLVE** the pronoun to that specific Dish Name immediately in the intent parameters.
+  - *Example*: User says "Show video of it" (Context: Pizza) -> Intent: SEARCH_VIDEO { dish_name: "Pizza" } (NOT "it").
+
+---
+
+### PART 2: PARAMETER EXTRACTION RULES
+
+1. **SEARCH_MAP**:
+   - "My way to [X]" -> destination_address: [X].
+   - "Near [Y]" -> destination_address: [Y].
+   - "Not Coles" -> brand_preference: "Woolworths".
+   - "Not Woolies" -> brand_preference: "Coles".
+   - "Grocery store" / "Supermarket" -> brand_preference: "Any".
+
+2. **SEARCH_RECIPE / VIDEO**:
+   - Capture FULL modifiers: "Carbonara no cream" -> dish_name: "Carbonara no cream".
+
+---
 
 ### FEW-SHOT EXAMPLES (Study these carefully):
 
-User: "I'm currently at 100 George St. Which Coles is best to stop at on my way to Parramatta?"
-Output: intents=[{ "intent": "SEARCH_MAP", "origin_address": "100 George St", "destination_address": "Parramatta", "brand_preference": "Coles" }]
+**Input**: "The weather is nice, what should I eat?"
+**Output**:
+{
+  "classification_group": "VAGUE_GENERAL",
+  "reasoning": "User is asking for a suggestion. No specific dish is defined yet.",
+  "intents": [{ "intent": "GENERAL_CHAT", "type": "consultation", "response_guideline": "Suggest 3 light dishes suitable for nice weather." }]
+}
 
-User: "Find me a grocery store that isn't Coles, preferably one near my apartment in Zetland."
-Output: intents=[{ "intent": "SEARCH_MAP", "origin_address": null, "destination_address": "Zetland", "brand_preference": "Woolworths" }]
+**Input**: "How much money do I need to make Bun Cha?"
+**Output**:
+{
+  "classification_group": "COMBO_INTENT",
+  "reasoning": "To find the cost of Bun Cha, we first need the ingredients.",
+  "intents": [
+    { "intent": "SEARCH_RECIPE", "dish_name": "Bun Cha" },
+    { "intent": "SEARCH_PRICE", "dependency_mode": "depend_on_recipe" }
+  ]
+}
 
-User: "Show me how to make Carbonara, but NOT the version with cream. I want the authentic Italian video guide."
-Output: intents=[{ "intent": "SEARCH_VIDEO", "dish_name": "authentic Italian Carbonara no cream" }]
+**Input**: "Price of 1kg lobster and 2 bunches of spinach."
+**Output**:
+{
+  "classification_group": "SINGLE_INTENT",
+  "reasoning": "User asks for prices of specific items. No recipe search needed.",
+  "intents": [
+    { "intent": "SEARCH_PRICE", "dependency_mode": "direct", "specific_ingredients": ["1kg lobster", "2 bunches of spinach"] }
+  ]
+}
 
-User: "Wait, did you say the supermarket is closed? I need to find another one near North Sydney then"
-Output: intents=[{ "intent": "SEARCH_MAP", "origin_address": null, "destination_address": "North Sydney", "brand_preference": "Any" }]
-
-User: "How can i cook chicken pizza and how about the price of ingredients?"
-Output: intents=[
-  { "intent": "SEARCH_RECIPE", "dish_name": "chicken pizza" },
-  { "intent": "SEARCH_PRICE", "specific_ingredients": [] } 
-]
-
-User: "How much is 1kg of beef and a bottle of milk?"
-Output: intents=[{ "intent": "SEARCH_PRICE", "specific_ingredients": ["1kg beef", "bottle of milk"] }]
-
+**History**: [User: "How to make Pho?", Bot: "Here is the recipe..."]
+**Input**: "Show me a video of it."
+**Output**:
+{
+  "classification_group": "CONTEXTUAL",
+  "reasoning": "User says 'it'. Context implies 'Pho'. Resolving 'it' to 'Pho'.",
+  "intents": [
+    { "intent": "SEARCH_VIDEO", "dish_name": "Pho" }
+  ]
+}
 `;
+
+
 export const orchestratorNode = async (state: typeof AgentState.State, config: any) => {
-    console.time("⏱️ supervisorNode logic");
+    console.log("**********************************************************************");
+    console.time("⏱️ ORCHESTRATOR running TIME:");
     
     
     const messages = state.messages;
     const lastUserMessage = messages.slice().reverse().find((msg) => msg._getType() === "human");
 
+    // ------ Lấy ra 3 tin nhắn human gần nhất không tính tin nắhn cuối cùng ----
+    const allHumanMessages = messages.filter(msg => msg._getType() === "human");
+    const historyCandidates = allHumanMessages.slice(0, -1);
+    const recentUserHistory = historyCandidates.slice(-3).map(m => m.content).join(" | ");
+    // ------------------------------------------------------------------------
     // Context Management
-    console.log("is_first_turn: ", state.is_first_turn);
     const isFirstTurn = state.is_first_turn ?? true;
     let currentDish = state.current_dish;
 
@@ -135,21 +196,69 @@ export const orchestratorNode = async (state: typeof AgentState.State, config: a
 
     // --- CALL LLM ---
     const router = baseLlm.withStructuredOutput(SupervisorOutputSchema);
-    const systemMessage = new SystemMessage(SYSTEM_PROMPT);
+    // const systemMessage = new SystemMessage(SYSTEM_PROMPT);
 
+    let memoryContextString = "No memory context available.";
+    console.log("state.isMemoryMode 77: ", state.isMemoryMode);
+    if (state.isMemoryMode) {
+      try {
+            // A. Lấy User Profile (Long-term Static)
+            const userId = config.configurable?.user_id || "default_user";
+            // Giả sử hàm này tồn tại
+            const userProfile = await UserProfileService.getProfile(userId); 
+            
+            // B. Lấy Graph Context (Long-term Dynamic - từ node search_memory trước đó)
+            const graphContext = state.graphContext || []; 
+            
+            // C. Format thành chuỗi để đưa vào Prompt
+            memoryContextString = `
+            ### LONG-TERM MEMORY CONTEXT:
+            1. **FULL USER PROFILE (JSON)**:
+            ${JSON.stringify(userProfile, null, 2)}
+            2. **KNOWLEDGE GRAPH (Past Events & Relationships)**: 
+            ${graphContext.length > 0 ? graphContext.join("\n") : "No related past events found."}
+            `;
+      } catch (err) {
+            console.error("⚠️ Failed to load memory context:", err);
+      }
+    }
     let result;
+
+
+
     try {
-        console.log(8);
-        // console.log("router: ", router);
-        result = await router.invoke([systemMessage, lastUserMessage.content]);
-        console.log(99);
+        if (state.isMemoryMode) {
+
+          const messagesPayload = [
+              // A. System Prompt (Luật lệ cố định)
+              new SystemMessage(SYSTEM_PROMPT),
+              
+              // B. Context & History (Dữ liệu hỗ trợ - Tách biệt)
+              new SystemMessage(`
+              === AUXILIARY DATA START ===
+              
+              ${state.isMemoryMode ? memoryContextString : ""}
+
+              ### RECENT CHAT HISTORY (Last 3 inputs for context):
+              ${recentUserHistory ? recentUserHistory : "No previous history."}
+              
+              === AUXILIARY DATA END ===
+              `),
+
+              // C. Current Input (Câu hỏi chính cần xử lý)
+              new HumanMessage(`CURRENT USER INPUT: "${lastUserMessage.content}"`)
+          ];
+          result = await router.invoke(messagesPayload);
+        } else {
+          result = await router.invoke([new SystemMessage(SYSTEM_PROMPT), new HumanMessage(`CURRENT USER INPUT: "${lastUserMessage.content}"`)]);
+        }
+        
     } catch (error) {
         console.error("Router Error:", error);
-        // Fallback
         return { next_active_agents: ["GENERAL_CHAT"] };
     }
 
-    console.log("🔍 LLM Reasoning:", result.reasoning);
+    // console.log("🔍 LLM Reasoning:", JSON.stringify(result, null, 2));
 
     // --- PROCESS INTENTS ---
     const nextActiveAgents = new Set<string>();
@@ -158,98 +267,95 @@ export const orchestratorNode = async (state: typeof AgentState.State, config: a
     let newOrigin = null;
     let newDest = null;
     let newBrandPreference = null;
-    let newIngredients = state.cached_ingredients;
-    console.log("results llm: \n", result);
+    let newIngredients = null;
+    let newCurrentDish = null;
+    let newCurrentDishVideo = null;
+    let general_chat_type = null;
+    let general_response_guideline = null;
     // Duyệt qua từng Intent object để xử lý logic riêng biệt
-    for (const item of result.intents) {
 
-        // Logic chung cho Recipe và Video: Cập nhật Dish name
-        if (item.intent === "SEARCH_RECIPE" || item.intent === "SEARCH_VIDEO") {
-            nextActiveAgents.add(item.intent); // Add agent name
-            
-            // Nếu LLM trích xuất được món mới -> Cập nhật State
-            if (item.dish_name) {
-            currentDish = item.dish_name;
-            // Reset ingredient cũ nếu món ăn thay đổi
-            // newIngredients = []; 
-            }
+    for (const intent of result.intents) {
+        switch (intent.intent) {
+            case "SEARCH_RECIPE":
+                nextActiveAgents.add("SEARCH_RECIPE");
+                newCurrentDish = intent.dish_name;
+                break;
+            case "SEARCH_VIDEO":
+                nextActiveAgents.add("SEARCH_VIDEO");
+                newCurrentDishVideo = intent.dish_name;
+                break;
+            case "SEARCH_PRICE":
+                nextActiveAgents.add("SEARCH_PRICE");
+                if(intent.specific_ingredients){
+                    newIngredients = intent.specific_ingredients;
+                }
+                else if(nextActiveAgents.has("SEARCH_RECIPE")){
+                  newIngredients = ["depend_on_recipe"];
+                }
+                break;
+            case "SEARCH_MAP":
+                nextActiveAgents.add("SEARCH_MAP");
+                if(intent.origin_address.toLowerCase().includes("user") && intent.origin_address.toLowerCase().includes("location")){
+                  newOrigin = "user_location";
+                }
+                if(intent.destination_address){
+                  newDest = intent.destination_address;
+                }
+                if(intent.brand_preference){
+                  newBrandPreference = intent.brand_preference;
+                }
+                break;
+            case "GENERAL_CHAT":
+                nextActiveAgents.add("GENERAL_CHAT");
+                if(intent.type){
+                  general_chat_type = intent.type;
+                }
+                if(intent.response_guideline){
+                  general_response_guideline = intent.response_guideline;
+                }
+                break;
         }
-
-        // Logic riêng cho Map
-        else if (item.intent === "SEARCH_MAP") {
-            nextActiveAgents.add("SEARCH_MAP");
-            
-            // Cập nhật địa chỉ nếu user nói rõ trong câu này
-            if (item.origin_address) newOrigin = item.origin_address;
-            if (item.destination_address) newDest = item.destination_address;
-            if(item.brand_preference) newBrandPreference = item.brand_preference;
-
-            // // Logic Fallback: Nếu không có địa chỉ trong Prompt -> Lấy Profile
-            // if (!newOrigin) newOrigin = userProfile?.work_address;
-            // if (!newDest) newDest = userProfile?.home_address;
-
-            // Safety check: Nếu vẫn thiếu địa chỉ -> Không chạy Agent Map
-            // if (!newOrigin || !newDest) {
-            // console.warn("⚠️ Bỏ qua SEARCH_MAP vì thiếu địa chỉ Origin/Dest.");
-            // nextActiveAgents.delete("SEARCH_MAP");
-            // nextActiveAgents.add("GENERAL_CHAT"); // Chat để hỏi địa chỉ
-            // }
-        }
-
-        // Logic riêng cho Price
-        else if (item.intent === "SEARCH_PRICE") {
-            nextActiveAgents.add("SEARCH_PRICE");
-            if (item.specific_ingredients && item.specific_ingredients.length > 0) {
-                // Nếu user hỏi giá cụ thể: "Giá thịt bò bao nhiêu" -> Update list này
-                newIngredients = item.specific_ingredients;
-            }
-        }
-
-        else if (item.intent === "GENERAL_CHAT") {
-            nextActiveAgents.add("GENERAL_CHAT");
-        }
-        }
-
-        // --- SPECIAL LOGIC: FIRST TURN ---
-        // Nếu là lượt đầu tiên, dù user chỉ hỏi Recipe, ta vẫn "khuyến mãi" thêm các agent khác
-        // if (isFirstTurn && currentDish) {
-        // console.log("🚀 First Turn Logic Activated");
-        // nextActiveAgents.add("SEARCH_RECIPE");
-        // nextActiveAgents.add("SEARCH_VIDEO");
-        // nextActiveAgents.add("SEARCH_PRICE");
-
-        // // Chỉ thêm Map nếu có đủ địa chỉ
-        // if ((newOrigin || userProfile?.work_address) && (newDest || userProfile?.home_address)) {
-        //     nextActiveAgents.add("SEARCH_MAP");
-        // }
-    // }
-
-    console.log("currentDish: ", currentDish);
+    }
+    console.log("nextActiveAgents: ", nextActiveAgents);
+    console.log("newCurrentDish: ", newCurrentDish);
+    console.log("newCurrentDishVideo: ", newCurrentDishVideo);
     console.log("newOrigin: ", newOrigin);
     console.log("newDest: ", newDest);
+    console.log("newBrandPreference: ", newBrandPreference);
     console.log("newIngredients: ", newIngredients);
-    console.log("nextActiveAgents: ", nextActiveAgents);
-    console.timeEnd("⏱️ supervisorNode logic");
-
+    console.log("general_chat_type: ", general_chat_type);
+    console.log("general_response_guideline: ", general_response_guideline);
+    console.timeEnd("⏱️ ORCHESTRATOR running TIME:");
+    console.log("**********************************************************************");
+    
     return {
         // Cập nhật State mới
         finished_branches: [],
         is_first_turn: false,
-        current_dish: currentDish,
+        current_dish: newCurrentDish,
+        current_dish_video: newCurrentDishVideo,
         current_origin_address: {  
             adressName: newOrigin,
-            adressID: null
+            adressID: null,
+            location: null
         },
         current_destination_address: {  
             adressName: newDest,
-            adressID: null
+            adressID: null,
+            location: null
         },
         brand_preference: newBrandPreference,
         cached_ingredients: newIngredients,
-
+        general_chat_type: general_chat_type,
+        general_response_guideline: general_response_guideline,
         // Danh sách Agent sẽ kích hoạt
         next_active_agents: Array.from(nextActiveAgents),
 
-        
+
+        // ============== Reset output =====
+        recipesList: null,
+        optimized_route_map: null,
+        videoUrl: null,
+        ingredientPriceList: null
     };
 };

@@ -8,14 +8,8 @@ import { SystemMessage, HumanMessage } from "@langchain/core/messages";
 import { Document } from "@langchain/core/documents";
 import { v4 as uuidv4 } from "uuid";
 import type { TripleFact } from "../graph/state";
+import { llm_summarizer } from "../lib/llm"
 
-// import * as dotenv from "dotenv";
-
-// dotenv.config({ path: ".env" }); 
-
-// // Tốt nhất nên để driver ra file config riêng để tái sử dụng (Singleton pattern)
-// // Nhưng để demo thì để đây ok.
-console.log("NEO4J_URI", process.env.NEO4J_URI);
 const driver = neo4j.driver(
     process.env.NEO4J_URI ,
     neo4j.auth.basic(
@@ -69,12 +63,8 @@ export const searchMemoryNode = async (state: typeof AgentState.State, config: a
     const userId = config.configurable?.userId || "default_user";
 
     // =============== Extracting. ==================================================================
-    const extractionLLM = new ChatOllama({
-        model: "llama3.1:8b",
-        temperature: 0,
-    });
     
-    const structuredLLM = extractionLLM.withStructuredOutput(ExtractionListSchema);
+    const structuredLLM = llm_summarizer.withStructuredOutput(ExtractionListSchema);
 
     // Prompt dạy AI cách dùng Context
     const systemPrompt = `
@@ -104,11 +94,7 @@ export const searchMemoryNode = async (state: typeof AgentState.State, config: a
     Input: "Yaz leads the AI team."
     Output: { "facts": [{ "subject": "Yaz", "predicate": "leads", "object": "team", "context": "AI department" }] }
     `;
-    console.log("==================================================");
-    console.log("==================================================");
-    console.log("==================================================");
-    console.log(`Input Prompt:\n ${rawInput}`);
-    console.log("------>>");
+
     const result = await structuredLLM.invoke([
         new SystemMessage(systemPrompt),
         new HumanMessage(rawInput)

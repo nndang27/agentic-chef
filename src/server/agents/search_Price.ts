@@ -6,7 +6,7 @@ import {getAllColesIngredients, getProductImageFromUrl} from "../tools/getProduc
 import test_recipe from "../test_recipe.json" with { type: "json" };
 // 2. Destructure để lấy dữ liệu bạn cần
 // const { test_recipe } = data;
-
+import { type RecipeData } from "../graph/state";
 // Schema for a single ingredient item
 const IngredientItemSchema = z.object({
   id: z.number().describe("The ID or index corresponding to the input list."),
@@ -275,11 +275,45 @@ function postProcessSearchResults(query: string, items: ValidatedProductItem[], 
 // const testListIngredients = 
 // 
 export const searchPriceAgentNode = async (state: typeof AgentState.State, config: any) => {
-    console.log("***START SEARCG PRICE NODE******");
-    const recipesList = state.recipesList;
-    // const recipesList = test_recipe;
+    console.log("**********************************************************************");
+    console.time("⏱️ SEARCH PRICE running TIME:");
+    let recipesList: RecipeData[] = [];
+    
+
+    if (state.cached_ingredients.includes("depend_on_recipe")) {
+      // TRƯỜNG HỢP 1: Lấy danh sách recipe đã có sẵn
+      recipesList = state.recipesList;
+    } else {
+      // TRƯỜNG HỢP 2: Tạo RecipeData giả từ danh sách string nguyên liệu
+      // Ví dụ: state.cached_ingredients = ["onion", "garlic", "beef"]
+      
+      recipesList = state.cached_ingredients.map((ingredientName, index) => {
+        return {
+          id: index + 100000, // Tạo ID giả để không trùng lặp
+          title: ingredientName, // Dùng tên nguyên liệu làm tiêu đề để hiển thị
+          image: "", // Không có ảnh
+          serves: [],
+          cook_time: [],
+          prep_time: null,
+          
+          // Quan trọng: Gán string vào item của Ingredient
+          ingredients: [
+            {
+              item: ingredientName,
+              amount: null, 
+              notes: null
+            }
+          ],
+          
+          steps: [], // Không có bước nấu
+          nutrition_estimate: {},
+          chef_tips: ""
+        } as RecipeData;
+      });
+      console.log("recipesList for each ingredient: \n", JSON.stringify(recipesList, null, 2));
+    }
+
     const recipesListWithPrice: RecipePriceData[] = [];
-    // console.log("recipesList: ", recipesList);
     for (const recipe of recipesList) {
         const itemNames = recipe.ingredients
           .map((r, index) => `[${index}] ${r.item}`)
@@ -291,7 +325,6 @@ export const searchPriceAgentNode = async (state: typeof AgentState.State, confi
         const recipe_ID = recipe.id;
         const ingredientAggregationMap = new Map<string, IngredientStoreGroup[]>();
         for (const supermarket of SUPERMARKET_LIST) {
-          console.log("supermarket: \n", supermarket);
           const SearchedPrice = await getAllColesIngredients(result, supermarket);          
           // -------- Lọc sản phẩm -------------------
           for (const query of SearchedPrice) {
@@ -344,11 +377,11 @@ export const searchPriceAgentNode = async (state: typeof AgentState.State, confi
           });
       
     }
-
-    console.log("***********************END SEARCG PRICE NODE******");
-
-    console.log("recipesListWithPrice: ", JSON.stringify(recipesListWithPrice, null, 2));
-
+    console.log(".......................\n");
+    console.log("recipesListWithPrice: \n", JSON.stringify(recipesListWithPrice, null, 2));
+    console.timeEnd("⏱️ SEARCH PRICE running TIME:");
+    console.log("**********************************************************************\n");
+    
     return {
         finished_branches: ["search_price_done"],
         ingredientPriceList: recipesListWithPrice

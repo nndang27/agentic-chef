@@ -1,43 +1,116 @@
-[{
-  "id": 7,
-  "title": "Beef Rump Steak Pho",
-  "image": "https://images.unsplash.com/photo-1547592180-85f173990554?q=80&w=2070&auto=format&fit=crop",
-  "serves": [ { "value": 4, "unit": "people" } ],
-  "cook_time": [ { "value": 25, "unit": "minute" } ],
-  "prep_time": null,
-  "ingredients": [
-    {
-      "item": "Coles Australian No Added Hormones Beef Rump Steak",
-      "amount": "750g",
-      "notes": null
+[
+  {
+    "id": 1001,
+    "title": "Vegetable Spring Rolls",
+    "image": "https://www.coles.com.au/_next/image?url=https%3A%2F%2Fwww.coles.com.au%2Fcontent%2Fdam%2Fcoles%2Finspire-create%2Ffeb21-thumbnails%2FFeb21-rubys-apple-spring-rolls-480x288.jpg&w=3840&q=90",
+    "serves": [
+      {
+        "value": "12",
+        "unit": "people"
+      }
+    ],
+    "cook_time": [
+      {
+        "value": "20",
+        "unit": "minute"
+      }
+    ],
+    "prep_time": [
+      {
+        "value": "5",
+        "unit": "minute"
+      }
+    ],
+    "ingredients": [
+      {
+        "item": "Green Apples",
+        "amount": "2 (about 180g)",
+        "notes": "peeled"
+      },
+      {
+        "item": "Carrot",
+        "amount": "1/2 (about 80g)",
+        "notes": "peeled"
+      },
+      {
+        "item": "Zucchini",
+        "amount": "1/2 (about 60g)",
+        "notes": ""
+      },
+      {
+        "item": "Lemon",
+        "amount": "1/2",
+        "notes": "rind finely grated, juiced"
+      },
+      {
+        "item": "Caster Sugar",
+        "amount": "1 tbs",
+        "notes": ""
+      },
+      {
+        "item": "Ground Cinnamon",
+        "amount": "1/2 tsp",
+        "notes": ""
+      },
+      {
+        "item": "Ground Nutmeg",
+        "amount": "Pinch of",
+        "notes": ""
+      },
+      {
+        "item": "Ground Ginger",
+        "amount": "Pinch of",
+        "notes": ""
+      },
+      {
+        "item": "Cornflour",
+        "amount": "1 1/2 tsp",
+        "notes": ""
+      },
+      {
+        "item": "Spring Roll Wrappers",
+        "amount": "12",
+        "notes": ""
+      },
+      {
+        "item": "Butter",
+        "amount": "40g",
+        "notes": "melted"
+      },
+      {
+        "item": "Cinnamon Sugar",
+        "amount": "to sprinkle",
+        "notes": ""
+      },
+      {
+        "item": "Boysenberry Ripple Yoghurt",
+        "amount": "to serve",
+        "notes": ""
+      }
+    ],
+    "steps": [
+      {
+        "step": 1,
+        "action": "Preheat oven to 180°C. Line a baking tray with baking paper.",
+        "time_minutes": null
+      },
+      {
+        "step": 2,
+        "action": "Use a grater to coarsely grate the apple, carrot and zucchini. Place in a colander and use your hands to squeeze out excess liquid.",
+        "time_minutes": null
+      },
+      {
+        "step": 3,
+        "action": "Place apple mixture in a medium bowl with lemon rind, 1 tsp lemon juice, caster sugar, cinnamon, nutmeg and ginger. Stir until well combined. Stir in cornflour.",
+        "time_minutes": null
+      }
+    ],
+    "nutrition_estimate": {
+      "calories": 218,
+      "protein": "1g",
+      "fat": "3g",
+      "sugar": "4g"
     },
-    {
-      "item": "Coles Vietnamese Inspired Beef Pho Stock",
-      "amount": "1L",
-      "notes": null
-    },
-    { "item": "Asian Pak Choy", "amount": null, "notes": "quartered" },
-    { "item": "Rice Noodles", "amount": "250g", "notes": null },
-    { "item": "Coriander Sprigs", "amount": "1/3 cup", "notes": null }
-  ],
-  "steps": [
-    {
-      "step": 1,
-      "action": "Heat a large non-stick frying pan over high heat. Cook the beef for 2-3 mins each side for medium or until cooked to your liking. Set aside for 5 mins to rest. Thinly slice.",
-      "time_minutes": null
-    },
-    {
-      "step": 2,
-      "action": "Meanwhile, place the stock in a large saucepan. Bring to the boil over medium heat. Remove the pan from heat. Add the pak choy. Stir until the pak choy just wilts.",
-      "time_minutes": null
-    },
-    {
-      "step": 3,
-      "action": "Prepare the noodles following packet directions. Drain. Divide the noodles among serving bowls. Ladle over the broth and pak choy. Top with the beef. Sprinkle with coriander to serve.",
-      "time_minutes": null
-    }
-  ],
-  "nutrition_estimate": { "calories": 519, "protein": ">46g", "fat": ">6g", "sugar": "1g (1%)" },
-  "chef_tips": "Do not overmix."
-}
+    "chef_tips": "Ruby's spring roll tips\n\nKeep it dry: If there's too much liquid in the mixture, it can make the spring rolls soggy and they could tear. Make sure you squeeze as much liquid from the grated fruit and veg as you can.\n\nGet creative: You can swap ingredients in the spring rolls for other favourite fruit and veggies. Try making them with pear instead of apple, pumpkin or sweet potato instead of carrot, and orange zest instead of lemon."
+  }
 ]

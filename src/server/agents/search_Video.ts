@@ -7,6 +7,17 @@ import { downloadTikTok } from "../tools/tiktok/download_tiktok.js";
 import { SemanticCache } from "../services/semanticCache.js";
 // 1. Định nghĩa cấu trúc chấm điểm (Scoring Schema)
 import { v4 as uuidv4 } from 'uuid';
+import { v2 as cloudinary } from 'cloudinary';
+import fs from 'fs'; // Import fs để xóa file sau khi upload (Clean up)
+
+// 1. Cấu hình Cloudinary
+cloudinary.config({ 
+  cloud_name: process.env.CLOUDINARY_CLOUD_NAME, 
+  api_key: process.env.CLOUDINARY_API_KEY, 
+  api_secret: process.env.CLOUDINARY_API_SECRET 
+});
+
+
 const VideoScoreSchema = z.object({
   index: z.number().describe("The index of the video in the input list (0, 1, 2...)"),
   isRecipe: z.boolean().describe("True if cooking tutorial, False otherwise"),
@@ -17,13 +28,67 @@ const VideoAnalysisList = z.object({
   analyses: z.array(VideoScoreSchema)
 });
 
+
+export const uploadToCloudinary = async (filePath: string) => {
+  try {
+    const result = await cloudinary.uploader.upload(filePath, {
+      resource_type: "video", 
+      folder: "food-agent-videos",
+    });
+    return result.secure_url; 
+  } catch (error) {
+    console.error("Upload failed:", error);
+    throw error;
+  }
+};
+
+export const uploadAllVideos = async (validResults: any[]) => {
+  
+  // Tạo một mảng các Promise (chưa await ngay ở đây để nó chạy song song)
+  const uploadPromises = validResults.map(async (r) => {
+    const filePath = r?.path;
+    
+    // Nếu không có đường dẫn file thì bỏ qua
+    if (!filePath) return null;
+
+    try {
+      // Gọi hàm upload
+      const url = await uploadToCloudinary(filePath);
+
+      // 🔥 QUAN TRỌNG: Xóa file local sau khi upload thành công để giải phóng ổ cứng
+      if (fs.existsSync(filePath)) {
+         fs.unlinkSync(filePath); 
+         console.log(`Deleted local file: ${filePath}`);
+      }
+
+      return url;
+    } catch (err) {
+      console.error(`Lỗi khi upload file ${filePath}:`, err);
+      return null; // Trả về null nếu lỗi để lọc sau
+    }
+  });
+
+  // Chờ tất cả các video upload xong cùng lúc (Nhanh hơn nhiều so với vòng lặp for)
+  const results = await Promise.all(uploadPromises);
+
+  // Lọc bỏ các giá trị null (các file lỗi hoặc không có path) -> Chỉ lấy URL chuẩn
+  const videoUrls = results.filter((url) => url !== null);
+
+  console.log("Danh sách URL Cloudinary:", videoUrls);
+  
+  return videoUrls;
+};
+
 // 2. Hàm Logic chính của Node
 export const tiktokAgentNode = async (state: typeof AgentState.State) => {
+    console.log("**********************************************************************\n");
+    console.time("⏱️ SEARCH VIDEO running TIME:");
+    
   // const messages = state.messages;
   // const lastMessage = messages[messages.length - 1];
   // const userQuery = lastMessage.content.toString();
 
-  let userQuery = state.current_dish;
+  let userQuery = state.current_dish_video;
 
   // --- BƯỚC 0: CHECK CACHE ------------------
   // const cachedData = await SemanticCache.checkCache(userQuery);
@@ -138,14 +203,17 @@ export const tiktokAgentNode = async (state: typeof AgentState.State) => {
   //   .map((r, index) => `${index + 1}. ${r.url} - Đã lưu tại: ${r.path}`)
   //   .join("\n");
 
-  console.log("validResults: ", validResults);
-
+  console.log("validResults: \n", validResults);
+  console.timeEnd("⏱️ SEARCH VIDEO running TIME:");
+  console.log("**********************************************************************\n");
+  const finalUrls = await uploadAllVideos(validResults);
+  
   return {
     finished_branches: ["search_video_done"],
     videoUrl: {
       video_id: groupVideoID,
       url: validResults.map(r => r?.url),
-      path: validResults.map(r => r?.path)
+      path: finalUrls
     }
 
   };

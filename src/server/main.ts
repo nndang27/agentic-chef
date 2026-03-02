@@ -3,7 +3,7 @@ import * as readline from "node:readline/promises"; // Module để đọc input
 import { stdin as input, stdout as output } from "node:process";
 import { app } from "./graph/workflow.ts";
 import { AgentService } from "./services/agentService";
-// import { initGraphDB } from "./agents/semantic_Collection";
+import { initGraphDB } from "./agents/semantic_Collection";
 // import { initRedisIndex } from "./lib/redis.ts";
 
 
@@ -30,7 +30,7 @@ async function runChat(userInput: string) {
 
 async function main() {
   // await initRedisIndex();
-  // await initGraphDB();
+  await initGraphDB();
   
   const rl = readline.createInterface({ input, output });
 

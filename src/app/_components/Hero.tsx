@@ -2,15 +2,34 @@
 import { motion } from "framer-motion";
 import { ArrowRight, Sparkles } from "lucide-react";
 import { useState } from "react";
-import { useLocation } from "wouter";
+import { useRouter } from "next/navigation";
 
 export function Hero() {
   const [query, setQuery] = useState("");
-  const [, setLocation] = useLocation();
+  // const [, setLocation] = useLocation();
+  const router = useRouter();
 
+  const handleSearch = () => {
+    if (!query.trim()) return;
+
+    // // A. Lưu nội dung vào localStorage
+    localStorage.setItem("pending_prompt", query);
+
+    // B. Chuyển hướng bằng router của Next.js
+    router.push("/dashboardPage");
+  };
+  
   const handleKeyDown = (e: React.KeyboardEvent) => {
+    // console.log(1)
     if (e.key === "Enter") {
-      setLocation("/dashboard");
+      e.preventDefault();
+      // console.log("query: ", query);
+      // if (!query.trim()) return;
+      // console.log(5);
+      // localStorage.setItem("pending_prompt", query);
+      handleSearch();
+      
+      
     }
   };
 
@@ -50,7 +69,8 @@ export function Hero() {
             className="w-full py-5 px-4 text-lg text-slate-800 placeholder:text-slate-400 focus:outline-none bg-transparent"
           />
           <button 
-            onClick={() => setLocation("/dashboard")}
+            type="button"
+            onClick={handleSearch}
             className="mr-2 p-3 bg-primary text-white rounded-xl hover:bg-primary/90 transition-colors"
           >
             <ArrowRight className="w-5 h-5" />

@@ -136,8 +136,8 @@ export function RecipeWidget({ isSearching = true, recipesList , onSaveRecipe}: 
               <div
                 className={`w-3 h-3 rounded-full transition-all duration-300 ${
                   activeIndex === index
-                    ? "bg-red-600 scale-125 shadow-md"
-                    : "bg-slate-300 hover:bg-red-300"
+                    ? "bg-blue-600 scale-125 shadow-md"
+                    : "bg-slate-300 hover:bg-blue-300"
                 }`}
               />
             </div>
@@ -180,11 +180,11 @@ export function RecipeWidget({ isSearching = true, recipesList , onSaveRecipe}: 
                 <h2 className="text-xl font-bold text-slate-800 tracking-tight">{currentRecipe.title || "No title"}</h2>
                 <div className="flex gap-4 mt-1 text-sm text-slate-500 font-medium">
                 <div className="flex items-center gap-1.5">
-                    <Users className="w-4 h-4 text-red-500" />
+                    <Users className="w-4 h-4 text-blue-500" />
                     <span>Serves {currentRecipe.serves[0].value}</span>
                 </div>
                 <div className="flex items-center gap-1.5">
-                    <Clock className="w-4 h-4 text-red-500" />
+                    <Clock className="w-4 h-4 text-blue-500" />
                     <span>{currentRecipe.cook_time[0].value} {currentRecipe.cook_time[0].unit}</span>
                 </div>
                 </div>
@@ -193,7 +193,7 @@ export function RecipeWidget({ isSearching = true, recipesList , onSaveRecipe}: 
             <button 
             onClick={handleInternalClick}
             disabled={isSaving}
-            className="text-xs font-semibold text-red-600 hover:text-red-700 hover:underline"
+            className="text-xs font-semibold text-blue-600 hover:text-blue-700 hover:underline"
             >
                 Save Recipe
             </button>
@@ -213,7 +213,7 @@ export function RecipeWidget({ isSearching = true, recipesList , onSaveRecipe}: 
                 {currentRecipe.ingredients.map((ing, idx) => (
                   <li key={idx} className="flex items-start gap-3 text-sm text-slate-700 group">
                     {/* Bullet point màu đỏ custom */}
-                    <span className="mt-1.5 w-1.5 h-1.5 rounded-full bg-red-600 shrink-0 group-hover:scale-125 transition-transform" />
+                    <span className="mt-1.5 w-1.5 h-1.5 rounded-full bg-blue-600 shrink-0 group-hover:scale-125 transition-transform" />
                     <span className="leading-relaxed">
                       {ing.amount && <span className="font-semibold">{ing.amount} </span>}
                       {ing.item}
@@ -247,7 +247,7 @@ export function RecipeWidget({ isSearching = true, recipesList , onSaveRecipe}: 
               <div className="space-y-6">
                 {currentRecipe.steps.map((step) => (
                   <div key={step.step} className="flex flex-col gap-1">
-                    <span className="text-red-600 font-bold text-sm uppercase tracking-wide">
+                    <span className="text-blue-600 font-bold text-sm uppercase tracking-wide">
                       Step {step.step}
                     </span>
                     <p className="text-sm text-slate-700 leading-relaxed">
@@ -261,7 +261,7 @@ export function RecipeWidget({ isSearching = true, recipesList , onSaveRecipe}: 
             {/* Recipe Tip Box */}
             <div className="bg-[#FFFBF2] border border-[#F5E6C8] rounded-lg p-5">
               <div className="flex items-center gap-2 mb-2">
-                <div className="bg-red-600 p-1.5 rounded-full">
+                <div className="bg-blue-600 p-1.5 rounded-full">
                     <ChefHat className="w-4 h-4 text-white" />
                 </div>
                 <h4 className="font-bold text-slate-800">Recipe tip</h4>

@@ -4,10 +4,17 @@ import { motion } from "framer-motion";
 import { Heart, Clock, Users, ExternalLink } from "lucide-react";
 import { RecipeData, RecipePriceData } from "@/server/db/schema";
 import Link from "next/link"; // Thêm import này
+import { LikeButton } from "../../components/LikeButton";
 // Định nghĩa interface cho item nhận vào từ API combined
+interface InteractionData {
+  total_like: number;
+  is_liked: boolean;
+}
+
 interface RecipeFeedItem {
   recipe: RecipeData;
   ingredient_price: RecipePriceData;
+  interaction: InteractionData;
 }
 
 export function RecipeFeed({ recipes }: { recipes: RecipeFeedItem[] }) {
@@ -44,7 +51,7 @@ export function RecipeFeed({ recipes }: { recipes: RecipeFeedItem[] }) {
     <div className="max-w-7xl mx-auto px-4 pb-20">
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-8">
         {recipes.map((item, index) => {
-          const { recipe, ingredient_price } = item;
+          const { recipe, ingredient_price, interaction } = item;
           const totalPrice = calculateTotal(ingredient_price);
 
           return (
@@ -107,13 +114,18 @@ export function RecipeFeed({ recipes }: { recipes: RecipeFeedItem[] }) {
                     <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 font-bold text-xs">
                       {recipe.title.charAt(0)}
                     </div>
-                    <span className="text-sm font-semibold text-slate-700">Recipe Bot</span>
+                    <span className="text-sm font-semibold text-slate-700">{recipe.userId}</span>
                   </div>
                   
-                  <div className="flex items-center gap-1.5 text-rose-500 bg-rose-50 px-2.5 py-1 rounded-lg">
-                    <Heart className="w-3.5 h-3.5 fill-current" />
-                    <span className="font-bold text-xs">AI Optimized</span>
-                  </div>
+                  {/* <div className="flex items-center gap-1.5 text-rose-500 bg-rose-50 px-2.5 py-1 rounded-lg"> */}
+                    {/* <Heart className="w-3.5 h-3.5 fill-current" />
+                    <span className="font-bold text-xs">AI Optimized</span> */}
+                    <LikeButton 
+                      recipeId={recipe.id} 
+                      initialLikes={interaction.total_like} 
+                      initialIsLiked={interaction.is_liked} 
+                    />
+                  {/* </div> */}
                 </div>
               </div>
             </motion.div>

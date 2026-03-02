@@ -23,7 +23,13 @@ import { IngredientPriceAgent } from "../_components/IngredientPriceAgent";
 import test_ingredient_price from '~/server/test_ingredient_price.json';
 import test_recipe from '~/server/test_recipe.json';
 import {saveRecipeToDatabase} from "~/server/db/queries";
-
+import { ChevronRight } from 'lucide-react'; // Import icon nếu cần
+import { getNearestSupermarket, getLatLongFromID } from "../../server/tools/getNearestSupermarket";
+import { Switch } from "../../components/ui/switch"; // Nếu dùng shadcn/ui
+// Hoặc dùng input checkbox thường nếu chưa có component Switch
+import { BrainCircuit } from "lucide-react";
+// import { useUser } from "@clerk/nextjs";
+import { useAuth } from "@clerk/nextjs";
 export interface LatLng {
   lat: number;
   lng: number;
@@ -94,6 +100,13 @@ interface VideoInterface  {video_id: string, url: string[], path: string[]}
 
 export default function DashboardPage() {
 
+  // const { isLoaded, isSignedIn, user } = useUser();
+  // console.log("userID CLIENT", user?.id);
+  const { getToken, userId } = useAuth();
+  const [isSocketReady, setIsSocketReady] = useState(false);
+  // Set memory node
+  const [isMemoryMode, setIsMemoryMode] = useState(false);
+
   const socketRef = useRef<Socket | null>(null);
   // const [messages, setMessages] = useState<Message[]>([]);
     const [messages, setMessages] = useState([
@@ -114,8 +127,11 @@ export default function DashboardPage() {
 
   const [ingredientPriceList, setIngredientPriceList] = useState<RecipePriceData[] | null>(test_ingredient_price);
   const [isSearchingPrice, setIsSearchingPrice] = useState(false);
-  const [isSearchingVideo, setIsSearchingVideo] = useState(true);
+  const [isSearchingVideo, setIsSearchingVideo] = useState(false);
   const [videoUrl, setVideoUrl] = useState<VideoInterface | null>(mockVideos);
+
+
+  const [isExpanded, setIsExpanded] = useState(false);
   // // const { toast } = useToast();
   const [loadingStates, setLoadingStates] = useState({
     tiktok: true,
@@ -123,26 +139,98 @@ export default function DashboardPage() {
     map: true,
     mealPlan: true,
   });
+// ============================================
+const executeSearch = async () => {
+  setIsSearchingMap(true);
+  
+  try {
+    // 1. Luôn lấy vị trí hiện tại trước
+    const location = await getCurrentLocation();
+    const currentUserLocation = { 
+        latitude: location.lat, 
+        longitude: location.lng 
+    };
 
+
+    // 2. Gọi API tìm kiếm
+    // Lưu ý: Lúc mới load trang, formData có thể null/rỗng, 
+    // API getNearestSupermarket cần xử lý được trường hợp originId/destinationId bị null (tìm xung quanh user)
+    const Location_List = await getNearestSupermarket(
+        currentUserLocation, 
+        null, 
+        null, 
+        "Coles Woolworths ALDI"
+    );
+
+    let originLocation = null;
+    let destinationLocation = null;
+
+    if (Location_List) {
+      // Logic lấy tọa độ chi tiết nếu người dùng đã nhập form (nếu không nhập thì bỏ qua)
+      // if (formData?.originId) {
+      //   originLocation = await getLatLongFromID(formData?.originId);
+      // }
+      // if (formData?.destinationId) {
+      //   destinationLocation = await getLatLongFromID(formData?.destinationId);
+      // }
+      console.log("Location_List", Location_List);
+      // 3. Cập nhật State
+      setMapDestination({
+        optimized_route_map: Location_List,
+        // Nếu không có input origin, mặc định lấy vị trí hiện tại làm origin hiển thị (tuỳ logic hiển thị của bạn)
+        current_origin_address: {
+            adressName: null, 
+            adressID: null, 
+            location: null // Fallback về location user nếu không có input
+        },
+        current_destination_address: {
+            adressName: null, 
+            adressID: null, 
+            location: null
+        },
+        brand_preference: "Coles Woolworths ALDI",
+        user_current_location: location,
+      });
+    }
+
+  } catch (error) {
+    console.error("Lỗi khi tìm kiếm mặc định:", error);
+  } finally {
+    setIsSearchingMap(false);
+  }
+};
+useEffect(() => {
+  if (!isSocketReady) return;
+  executeSearch();
+  const savedPrompt = localStorage.getItem("pending_prompt");
+  if (savedPrompt) {
+    console.log("savedPrompt: ", savedPrompt);
+    handleSendMessage(savedPrompt);
+    localStorage.removeItem("pending_prompt");
+  }
+}, [isSocketReady]);
+// ==============================================
     // --- 1. SETUP SOCKET ---
   useEffect(() => {
+    const connectSocket = async () => {
+      const token = await getToken();
+      console.log("userId: ", userId);
+      if (token) {
+        socketRef.current = io(`http://${process.env.BACKEND_IP}`, { // "http://localhost:3001",
+          auth: {
+            token: token // Server sẽ đọc cái này ở socket.handshake.auth.token
+          }
+        });
+        socketRef.current.on("connect", () => {
+          console.log("Connected to backend!");
+          setIsSocketReady(true);
+        });
 
-    socketRef.current = io("http://213.173.102.223:13308");
-    // socket = io("http://localhost:3001");
 
-    socketRef.current.on("connect", () => {
-      console.log("Connected to socket server");
-    });
 
     socketRef.current.on("agent_node", (nodeName) => {
       let statusText = null;
       // Map tên Node sang trạng thái hiển thị
-      if (nodeName === "search_agent") {
-        statusText = "Searching relevant recipes...";
-      }
-      if (nodeName === "tiktok_agent") {
-        statusText = "Looking for cooking videos...";
-      }
       if (nodeName === "search_map") {
         statusText = "Searching route...";
         setIsSearchingMap(true);
@@ -161,6 +249,18 @@ export default function DashboardPage() {
       if (nodeName === "search_video") {
         statusText = "Searching videos...";
         setIsSearchingVideo(true);
+      }
+      if (nodeName === "general_chat") {
+        statusText = "Chatting...";
+      }
+      if (nodeName === "load_update_memory") {
+        statusText = "Getting the user Profile...";
+      }
+      if (nodeName === "search_memory") {
+        statusText = "Searching past experiences...";
+      }
+      if (nodeName === "manage_memory") {
+        statusText = "Managing memory...";
       }
       setAgentStatus(statusText);
     });
@@ -181,25 +281,27 @@ export default function DashboardPage() {
 
     // Khi Agent tìm xong map (Backend cần gửi sự kiện này kèm dữ liệu)
     socketRef.current.on("map_result", (data) => {
+      console.log("map_result: ", data);
        setIsSearchingMap(false); // Tắt loading ở Map
        setMapDestination(data); // Cập nhật Map
     });
     socketRef.current.on("video_result", (data) => {
-      if(data){
-      const fixedData = {
-        ...data,
-        path: data.path.map(p => {
-          if (!p) return null;
-          // Thay thế "../../public" bằng rỗng để đường dẫn bắt đầu bằng "/"
-          return p.replace('../../public', '');
-        })
-      };
-
+      // if(data){
+      // const fixedData = {
+      //   ...data,
+      //   path: data.path.map(p => {
+      //     if (!p) return null;
+      //     // Thay thế "../../public" bằng rỗng để đường dẫn bắt đầu bằng "/"
+      //     return p.replace('../../public', '');
+      //   })
+      // };
+      console.log("video_result: ", data);
       setIsSearchingVideo(false); // Tắt loading ở Video
-      setVideoUrl(fixedData); // Cập nhật Video
+      console.log("isSearchingVideo: ", isSearchingVideo);
+      setVideoUrl(data); // Cập nhật Video
 
       // console.log("video_result: ", fixedData);
-      }
+      // }
     });
     socketRef.current.on("recipe_result", (data) => {
       setIsSearchingRecipe(false); // Tắt loading ở Recipe
@@ -225,11 +327,20 @@ export default function DashboardPage() {
       setAgentStatus(null);
     });
 
+      }
+    }
+    if (userId) {
+      connectSocket();
+    }
     return () => {
-      socketRef.current?.disconnect();
+      if (socketRef.current) {
+        socketRef.current.disconnect();
+        socketRef.current = null;
+      }
     };
 
-  }, []);
+
+  }, [getToken, userId]);
 
 
   const handleSendMessage = async (msg: string) => {
@@ -245,7 +356,7 @@ export default function DashboardPage() {
     const location = await getCurrentLocation();
     const a = {lat: location.lat, lng: location.lng};
     console.log("a: ", a, socketRef.current);
-    socketRef.current?.emit("chat_message", {msg, userCurrentLocation:a});
+    socketRef.current?.emit("chat_message", {msg, userCurrentLocation:a, isMemoryMode: isMemoryMode});
 
     // ------ Sending user location to backend ----
     
@@ -263,8 +374,9 @@ export default function DashboardPage() {
 
 
   const handleSaveClick = async (recipeFromChild: any, index: number) => {
-      
+
       // 1. Duyệt mảng ingredientPriceList để tìm item có recipe_id khớp với id của recipe con
+      // userId
       const foundPrice = ingredientPriceList.find(
         (price: any) => price.recipe_id === Number(recipeFromChild.id)
       );
@@ -294,11 +406,15 @@ export default function DashboardPage() {
 
       {/* Left Sidebar - Chat */}
       <div className="w-1/3 min-w-[350px] max-w-[450px] h-full">
+
+          
         <ChatInterface 
           messages={messages} 
           isGenerating={isGenerating}
           agentStatus={agentStatus}
           onSendMessage={handleSendMessage} 
+          isMemoryMode={isMemoryMode}        // Truyền giá trị xuống để hiển thị
+          onToggleMemory={setIsMemoryMode}
         />
       </div>
 
@@ -339,12 +455,26 @@ export default function DashboardPage() {
     className="flex-1 min-h-0 overflow-hidden rounded-xl"
   >
     <div className="w-full h-full bg-white border border-slate-200 p-4 overflow-hidden flex flex-col">
-      <h3 className="font-bold text-slate-700 mb-2 shrink-0">Price Comparison</h3>
+      {/* <h3 className="font-bold text-slate-700 mb-2 shrink-0">Price Comparison</h3>
+       */}
+      <div className="flex items-center justify-between mb-2 shrink-0">
+          <h3 className="font-bold text-slate-700">Price Comparison</h3>
+          
+          {/* Nút bấm được di chuyển ra đây */}
+          <button 
+              onClick={() => setIsExpanded(true)}
+              className="text-xs font-semibold text-blue-600 hover:text-blue-700 flex items-center gap-1 hover:underline"
+          >
+              Compare & Swap <ChevronRight className="w-3 h-3" />
+          </button>
+      </div>
       <div className="flex-1 min-h-0 overflow-auto">
          <IngredientPriceAgent 
          isLoading={isSearchingPrice} 
         //  recipesPriceData={test_ingredient_price}
          recipesPriceData={ingredientPriceList}
+         isExpanded={isExpanded} 
+        onClose={() => setIsExpanded(false)}
          />
       </div>
     </div>
@@ -370,9 +500,8 @@ export default function DashboardPage() {
 
           {/* Right Column - Stacked Widgets */}
           <div className="flex flex-col gap-6 h-full overflow-y-auto pr-1">
-            {/* TikTok Widget */}
-                    {/* Header */}
-            <div className="flex justify-end mb-6">
+
+            {/* <div className="flex justify-end mb-6">
               <Button
                 // onClick={handleAddToNotion}
                 className="bg-white text-slate-700 hover:bg-slate-50 border border-slate-200 shadow-sm gap-2"
@@ -382,7 +511,7 @@ export default function DashboardPage() {
                 </div>
                 Add to Notion
               </Button>
-            </div>
+            </div> */}
 
             <motion.div
               initial={{ opacity: 0, scale: 0.95 }}
@@ -391,8 +520,8 @@ export default function DashboardPage() {
               className="shrink-0"
             >
               <TikTokAgent 
-              isLoading={isSearchingVideo} 
-              videoUrl={videoUrl}
+                isLoading={isSearchingVideo} 
+                videoUrl={videoUrl}
               />
             </motion.div>
           </div>

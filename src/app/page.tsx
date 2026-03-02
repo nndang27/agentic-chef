@@ -20,7 +20,6 @@ const mockItem = mockUrl.map((url, index) => ({
 
 export default async function HomePage() {
   const allRecipes = await getAllUsersRecipes();
-  // console.log(posts);
 
   return (
     <main className="">

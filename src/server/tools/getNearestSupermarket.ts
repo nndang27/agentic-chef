@@ -92,15 +92,14 @@ export async function getNearestSupermarket(currentUserLocation: {latitude: numb
 
     try {
         // Gọi Routes API
-        console.log(33);
         const routeRes = await axios.post('https://routes.googleapis.com/directions/v2:computeRoutes', {
             origin: originId 
             ? { placeId: originId } 
             : { 
                 location: {
                     latLng: {
-                        latitude: currentUserLocation.latitude,
-                        longitude: currentUserLocation.longitude
+                        latitude: currentUserLocation.lat,
+                        longitude: currentUserLocation.lng
                     }
                 }
             },
@@ -114,8 +113,8 @@ export async function getNearestSupermarket(currentUserLocation: {latitude: numb
                 'X-Goog-FieldMask': 'routes.polyline,routes.viewport,routes.legs' // Lấy thêm viewport
             }
         });
-
         const route = routeRes.data.routes[0];
+        
         const viewport = route.viewport; // { low: {latitude, longitude}, high: {...} }
         const encodedPolyline = route.polyline.encodedPolyline;
         // console.log(3);
@@ -138,7 +137,6 @@ export async function getNearestSupermarket(currentUserLocation: {latitude: numb
         });
         // console.log(4);
         const candidates = placesRes.data.places || [];
-        // console.log("candidates: ", candidates);
         // console.log("===================================================");
 
         const routePath = decodePolyline(encodedPolyline);

@@ -46,13 +46,12 @@ interface FormData {
 
 export function AgentMapWidget({ destination, isSearching = true, agentMapResult }: { destination: string, isSearching?: boolean, agentMapResult: MapResultData | null }) {
   // Giả sử vị trí hiện tại của user (Có thể lấy từ navigator.geolocation)
-  // console.log("agentMapResult: ", agentMapResult);
   
   const [mapData, setMapData] = useState<MapResultData | null>(null);
 
 
   const [formData, setFormData] = useState<FormData | null>({
-        origin: "",
+    origin: "",
     originId: null, // Lưu Place ID của Origin
 
     supermarket: "Supermarket",
@@ -68,8 +67,8 @@ export function AgentMapWidget({ destination, isSearching = true, agentMapResult
   useEffect(() => {
     // Nếu có kết quả từ Agent gửi xuống -> Cập nhật State ngay
     if (agentMapResult) {
+      // console.log("agentMapResult: ", agentMapResult);
       setMapData(agentMapResult);
-
 
       setFormData(prev => ({
         ...prev,

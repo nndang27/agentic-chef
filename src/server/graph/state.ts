@@ -60,6 +60,12 @@ export interface RecipeData {
   chef_tips: string;
 }
 
+export interface VideoGroupResult {
+  video_id: string;        // ID định danh nhóm video (UUID)
+  url: (string | undefined)[]; // URL gốc của video (TikTok/Youtube...), có thể undefined nếu map lỗi
+  path: string[];          // URL video đã upload lên Cloudinary (Final URLs)
+}
+
 // ------------------------------------------
 // Kế thừa MessagesAnnotation để có sẵn lịch sử chat (messages)
 export const AgentState = Annotation.Root({
@@ -100,12 +106,22 @@ export const AgentState = Annotation.Root({
     reducer: (x, y) => y,
     default: () => "",
   }),
-
+  current_dish_video:Annotation<string>({
+    reducer: (x, y) => y,
+    default: () => "",
+  }),
   current_origin_address: Annotation<string>({
     reducer: (x, y) => y,
     default: () => "",
   }),
-
+  general_chat_type: Annotation<string>({
+    reducer: (x, y) => y,
+    default: () => "",
+  }),
+  general_response_guideline: Annotation<string>({
+    reducer: (x, y) => y,
+    default: () => "",
+  }),
   current_destination_address: Annotation<string>({
     reducer: (x, y) => y,
     default: () => "",
@@ -156,5 +172,14 @@ ingredientPriceList: Annotation<RecipePriceData[]>({
     default: () => [],
   }),
   
+  isMemoryMode: Annotation<boolean>({
+    reducer: (current, next) => next,
+    default: () => true,
+  }),
+
+  videoUrl: Annotation<VideoGroupResult>({
+    reducer: (current, next) => next,
+    default: () => null,
+  }),
 });
 

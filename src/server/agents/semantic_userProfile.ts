@@ -7,6 +7,7 @@ import { getVectorStore } from "../graph/workflow";
 import { Document } from "@langchain/core/documents";
 import { AgentState } from "../graph/state";
 import { v5 as uuidv5 } from "uuid";
+import { UserProfileService } from "../memory/userProfile";
 
 // Định nghĩa các hành động được phép
 const MemoryActionSchema = z.object({
@@ -44,25 +45,23 @@ const PROFILE_NAMESPACE = '1b671a64-40d5-491e-99b0-da01ff1f3341';
 
 export const semantic_memoryAgentNode = async (state: typeof AgentState.State, runtime: any)  => {
     const userId = runtime.configurable?.user_id;
+    console.log("userId: ", userId);
     const namespace = ["semantic_memory", userId];
     const key = "core_profile";
-
+    console.log("state.isMemoryMode999: ", state.isMemoryMode);
     // 1. Lấy thông tin đầu vào
     const lastMessage = state.messages.at(-1);
     if (!lastMessage || lastMessage._getType() !== "human") return {};
-    console.log("lastMessage", lastMessage.content);
     // 2. Lấy Profile CŨ từ Store
     const vectorStore = await getVectorStore();
-    const docId = uuidv5(`profile_${userId}`, PROFILE_NAMESPACE);
-
+    const docId = uuidv5(`${userId}`, PROFILE_NAMESPACE);
     const searchResults = await vectorStore.similaritySearch(
             "user profile", // Dummy query (Từ khóa phụ)
             1,              // Chỉ lấy 1 kết quả (Profile gốc)
             { userId: userId, doc_type: "core_profile" } // Filter cực kỳ quan trọng để lấy đúng file
         );
-
     let currentProfile = { ...DEFAULT_PROFILE, id: userId };
-    
+
     // Nếu tìm thấy trong DB, parse chuỗi JSON từ pageContent ra thành Object
     if (searchResults.length > 0) {
         try {
@@ -171,11 +170,9 @@ export const semantic_memoryAgentNode = async (state: typeof AgentState.State, r
                 },
             })
         ],
-        { ids: [docId] } // Truyền param ID vào để ép hệ thống dùng ID này
+        { ids: [docId] }
     );
 
-    console.log("✅ Profile consolidated and saved to Vector Store.");
-    
     return {};
 };
 
@@ -201,6 +198,7 @@ const applyOperations = (profile: any, ops: z.infer<typeof MemoryActionSchema>[]
     switch (op.action) {
       case "SET":
         // Ghi đè giá trị
+        if (op.value === "") break;
         target[finalKey] = op.value;
         break;
 

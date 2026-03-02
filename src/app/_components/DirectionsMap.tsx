@@ -35,7 +35,6 @@ export function Directions({ agentMapResult, isBigMap = true, padding = 50 }: {a
   const isRadiusMode = 
       (agentMapResult?.current_origin_address?.adressName && agentMapResult?.current_destination_address?.adressName === null) || 
       (agentMapResult?.current_origin_address?.adressName === null && agentMapResult?.current_destination_address?.adressName === null);
- 
   useEffect(() => {
     if (!map || !mapsLibrary || !markerLibrary || agentMapResult === null) return;
     markersRef.current.forEach(m => m.setMap(null));

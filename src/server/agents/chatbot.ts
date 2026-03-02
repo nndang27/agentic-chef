@@ -1,79 +1,168 @@
 // src/nodes/generalAssistant.ts
-import { SystemMessage, AIMessage } from "@langchain/core/messages";
+import { SystemMessage, AIMessage, HumanMessage } from "@langchain/core/messages";
 import { AgentState } from "../graph/state";
 import { llm_chatbot } from "../lib/llm";
-import { UserProfileService } from "../memory/userProfile";
-import {prepareMessagesForLLM} from "../utils/filterMessage";
 import { DEFAULT_PROFILE } from "../memory/userProfile";
 import { getVectorStore } from "../graph/workflow";
+import { UserProfileService } from "../memory/userProfile";
 
-export const generalAssistantNode = async (state: typeof AgentState.State, config: any) => {
-    console.time("⏱️ generalAssistantNode time");
-    // const current_profile = state.userProfile; // Đã có từ load_memory
-    const userId = config.configurable?.user_id || "default_user";
-    // const current_profile = await UserProfileService.getProfile(userId);
+export const generalChatNode = async (state: typeof AgentState.State, config: any) => {
+    console.time("⏱️ generalChatNode time");
+    // 1. Lấy User Profile (Giữ nguyên logic cũ)
+    let memoryContextString = "No memory context available.";
+    console.log("state.isMemoryMode: ", state.isMemoryMode)
+    if (state.isMemoryMode) {
+            try {
+                // A. User Profile
+                const userId = config.configurable?.user_id || "default_user";
+                console.log("userId: ", userId)
+                const userProfile = await UserProfileService.getProfile(userId);
+                console.log("userProfile: ", userProfile)
+                // B. Graph Context (Từ node search_memory)
+                const graphContext = state.graphContext || [];
 
-    const vectorStore = await getVectorStore();
-
-    const searchResults = await vectorStore.similaritySearch(
-            "user profile", // Dummy query (Từ khóa phụ)
-            1,              // Chỉ lấy 1 kết quả (Profile gốc)
-            { userId: userId, doc_type: "core_profile" } // Filter cực kỳ quan trọng để lấy đúng file
-        );
-
-    let current_profile = { ...DEFAULT_PROFILE, id: userId };
-    
-    // Nếu tìm thấy trong DB, parse chuỗi JSON từ pageContent ra thành Object
-    if (searchResults.length > 0) {
-        try {
-            current_profile = JSON.parse(searchResults[0].pageContent);
-        } catch (error) {
-            console.warn("⚠️ Không thể parse JSON từ profile cũ, dùng default.");
-        }
+                // C. Đóng gói JSON
+                memoryContextString = JSON.stringify({
+                    user_profile: userProfile,
+                    relevant_past_interactions: graphContext
+                }, null, 2);
+                
+            } catch (err) {
+                console.error("⚠️ GeneralChat failed to load memory:", err);
+            }
     }
 
-    console.log("==========================================");
-    console.log("USER PROFILE: ", current_profile);
-    console.log("==========================================");
-    // Prompt chuyên để TRẢ LỜI (không cần lo về routing)
+
+    // 2. Lấy câu hỏi gốc của người dùng (Last Human Message)
+    const messages = state.messages;
+    const lastUserMessage = messages.slice().reverse().find((msg) => msg._getType() === "human");
+    const userPrompt = lastUserMessage ? lastUserMessage.content : "No prompt found";
+
+    // ------ Lấy ra 3 tin nhắn human gần nhất không tính tin nắhn cuối cùng ----
+    let recentUserHistory = "No memory context available.";
+    if (state.isMemoryMode) {
+
+        const allHumanMessages = messages.filter(msg => msg._getType() === "human");
+        const historyCandidates = allHumanMessages.slice(0, -1);
+        recentUserHistory = historyCandidates.slice(-3).map(m => m.content).join(" | ");
+
+    }
+
+    // ------------------------------------------------------------------------
+
+    // 3. Thu thập Context từ các Agent đã chạy
+    // Chúng ta tạo một object chứa kết quả để nạp vào prompt
+    const executionContext: any = {};
+    const activeAgents = state.next_active_agents || []; // List các agent đã chạy, vd: ["SEARCH_RECIPE", "SEARCH_PRICE"]
+
+    console.log("🔍 Collecting context from agents:", activeAgents);
+
+    // --- CASE: SEARCH_RECIPE ---
+    if (activeAgents.includes("SEARCH_RECIPE")) {
+        executionContext["RECIPE_RESULT"] = {
+            status: "Executed",
+            dish_name: state.current_dish,
+            data: state.recipesList && state.recipesList.length > 0 
+                ? state.recipesList.map(r => ({ title: r.title, ingredients: r.ingredients, steps_summary: `Has ${r.steps.length} steps` })) 
+                : "No recipe found."
+        };
+    }
+
+    // --- CASE: SEARCH_VIDEO ---
+    if (activeAgents.includes("SEARCH_VIDEO")) {
+        console.log("***&%$^state.videoUrl: ", state.videoUrl)
+        executionContext["VIDEO_RESULT"] = {
+            status: "Executed",
+            search_query: state.current_dish_video,
+            video_url: state.videoUrl.url ? state.videoUrl.url : "No video URL found."
+        };
+    }
+
+    // --- CASE: SEARCH_PRICE ---
+    if (activeAgents.includes("SEARCH_PRICE")) {
+        executionContext["PRICE_RESULT"] = {
+            status: "Executed",
+            ingredients_to_check: state.cached_ingredients,
+            price_data: state.ingredientPriceList // List giá cả
+        };
+    }
+
+    // --- CASE: SEARCH_MAP ---
+    if (activeAgents.includes("SEARCH_MAP")) {
+        // Lưu ý: Check kỹ chính tả addressName hay adressName trong state của bạn
+        executionContext["MAP_RESULT"] = {
+            status: "Executed",
+            origin: state.current_origin_address?.addressName || "Unknown origin", 
+            destination: state.current_destination_address?.addressName || "Unknown destination",
+            brand: state.brand_preference,
+            // Có thể thêm state.optimized_route_map nếu agent Map trả về kết quả cụ thể
+        };
+    }
+
+    // --- CASE: GENERAL_CHAT (Tư vấn/Small talk) ---
+    if (activeAgents.includes("GENERAL_CHAT")) {
+        executionContext["CONSULTATION_CONTEXT"] = {
+            type: state.general_chat_type, // 'consultation', 'greeting', etc.
+            // guideline: state.general_response_guideline
+        };
+    }
+    // ### USER PROFILE (MEMORY):
+    // ${JSON.stringify(current_profile, null, 2)}
+    // 4. Xây dựng Prompt tổng hợp
+    console.log("memoryContextString: ", memoryContextString);
     const systemPrompt = `
-    You are a helpful ChatBot as ChatGPT.
+        You are a smart, friendly, and personalized Cooking Assistant named "Chef bot".
+        Your goal is to analyze User Input + Tool Results + (Optional) Memory + (Optional) Recent Chat History to provide a helpful, natural response.
 
-    USER PROFILE (MEMORY):
-    ${JSON.stringify(current_profile, null, 2)}
+        ### 🧠 MEMORY & CONTEXT (Use this to personalize):
+        ${memoryContextString}
 
-    INSTRUCTION:
-    - Answer the user's question naturally and shortly.
-    - ALWAYS check the User Profile before answering. If they ask for food, avoid their allergies.
-    - If you don't know, just say you don't know.
-    `;
+        ### RECENT CHAT HISTORY (Last 3 inputs for context):
+        ${recentUserHistory ? recentUserHistory : "No previous history."}
+             
+        ### 🛠️ EXECUTION CONTEXT (Data found by tools):
+        ${JSON.stringify(executionContext, null, 2)}
 
-    const filted_message = prepareMessagesForLLM(state.messages);
-    // console.log("==========================================");
-    // console.log("SYSTEM PROMPT: ", filted_message);
-    // console.log("==========================================");
+        ### INSTRUCTIONS:
+        1. **Synthesize**: Combine "EXECUTION CONTEXT" to form a complete answer.
+        - **RECIPE**: Mention dish name & key ingredients. Ask if they want full steps.
+        - **VIDEO**: Provide the URL explicitly: "Here is a video guide: [URL]".
+        - **PRICE**: Summarize total cost.
+        - **MAP**: Mention location/brand.
+        - **GENERAL_CHAT**: If no tools ran, just chat naturally based on Memory.
 
+        2. **Personalization (CRITICAL)**: 
+        - If **User Profile** exists: Check **Allergies** and **Diet** immediately. WARN the user if the found recipe violates their diet (e.g., "Note: This recipe contains peanuts, which you are allergic to.").
+        - If **Past Interactions** exist: Reference them naturally (e.g., "Unlike the chicken dish you had yesterday, this one is...").
+
+        3. **Tone**: Helpful, encouraging, concise. 
+        - Do NOT mention "JSON", "Agents", "Schema", or "Tools". 
+        - Talk like a human friend.
+
+        4. **Missing Data**: If a tool ran but returned null/"No found", politely inform the user.
+
+        Answer the user's input below based on this context.
+        `;
+
+    console.log("==========================================");
+    console.log("📝 GENERATING FINAL RESPONSE...");
+    // console.log("System Prompt Preview:", systemPrompt); // Uncomment to debug prompt
+    console.log("==========================================");
+  
+
+    // 5. Gọi LLM
+    const inputs = [
+        new SystemMessage(systemPrompt),
+        new HumanMessage(userPrompt) // Dùng tin nhắn gốc của user để LLM biết ngữ cảnh hỏi
+    ];
+
+    const response = await llm_chatbot.invoke(inputs);
+
+    console.log("🤖 CHAT BOT RESPONSE:", response.content);
+    console.timeEnd("⏱️ generalChatNode time");
     
-    const messages = [new SystemMessage(systemPrompt), ...filted_message];
-
-    // // Gọi LLM để sinh câu trả lời
-    // const response = await llm_chatbot.invoke(messages);
-    // console.log("==========================================");
-    // console.log("CHAT BOT: ", response.content);
-    
-
-    process.stdout.write("CHAT BOT: "); // In tiêu đề trước, không xuống dòng
-    let finalContent = "";
-
-    const stream = await llm_chatbot.stream(messages);
-    for await (const chunk of stream) {
-        const content = chunk.content as string;
-        process.stdout.write(content);
-        finalContent += content;
-    }
-    process.stdout.write("\n");
-
-    console.timeEnd("⏱️ generalAssistantNode time");
-    
-    return { messages: [new AIMessage(finalContent)] };
+    return { 
+        messages: [new AIMessage(response.content)],
+        finished_branches: ["general_chat_done"]
+     };
 };

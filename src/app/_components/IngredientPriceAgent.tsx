@@ -54,10 +54,12 @@ function cn(...inputs: (string | undefined | null | false)[]) {
 // --- MAIN COMPONENT ---
 export const IngredientPriceAgent: React.FC<IngredientPriceAgentProps> = ({ 
   isLoading = false, 
-  recipesPriceData = []
+  recipesPriceData = [],
+  isExpanded,
+  onClose
 }) => {
   const [activeRecipeIndex, setActiveRecipeIndex] = useState(0);
-  const [isExpanded, setIsExpanded] = useState(false);
+  // const [isExpanded, setIsExpanded] = useState(false);
   const [selectedVariants, setSelectedVariants] = useState<Record<string, ProductItem>>({});
 
   useEffect(() => {
@@ -161,12 +163,12 @@ export const IngredientPriceAgent: React.FC<IngredientPriceAgentProps> = ({
                 ))}
             </div>
 
-            <button 
+            {/* <button 
                 onClick={() => setIsExpanded(true)}
                 className="text-xs font-medium text-blue-600 hover:text-blue-800 flex items-center gap-1 hover:underline"
             >
                 Compare & Swap <ChevronRight className="w-3 h-3" />
-            </button>
+            </button> */}
         </div>
       </div>
 
@@ -187,7 +189,7 @@ export const IngredientPriceAgent: React.FC<IngredientPriceAgentProps> = ({
                 <p className="text-xs text-slate-500">Recipe {activeRecipeIndex + 1}/{recipesPriceData.length}</p>
               </div>
               <button 
-                onClick={() => setIsExpanded(false)}
+                onClick={onClose} //{() => setIsExpanded(false)}
                 className="p-2 bg-slate-100 hover:bg-slate-200 rounded-full transition-colors"
               >
                 <X className="w-5 h-5 text-slate-600" />

@@ -5,7 +5,9 @@ import { Send, Sparkles, User, Loader2 } from "lucide-react"; // Import thêm Lo
 import { useState, useRef, useEffect } from "react";
 
 import { io, Socket } from "socket.io-client";
-
+import { Switch } from "../../components/ui/switch"; // Nếu dùng shadcn/ui
+// Hoặc dùng input checkbox thường nếu chưa có component Switch
+import { BrainCircuit } from "lucide-react";
 // let socket: Socket;
 
 interface ChatInterfaceProps {
@@ -15,15 +17,20 @@ interface ChatInterfaceProps {
   
   // 👇 QUAN TRỌNG: Khai báo hàm này để nhận từ cha
   onSendMessage: (text: string) => void; 
+  isMemoryMode: boolean;
+  onToggleMemory: (checked: boolean) => void;
 }
 
 export function ChatInterface({ 
   messages, 
   isGenerating, 
   agentStatus, 
-  onSendMessage // 👈 Nhận hàm từ props
+  onSendMessage ,
+  isMemoryMode,
+  onToggleMemory
 }: ChatInterfaceProps){
   const [input, setInput] = useState("");
+
   // const [isGenerating, setIsGenerating] = useState(false);
   
   // State lưu trạng thái hành động hiện tại của Agent (VD: "Thinking...", "Searching...")
@@ -32,56 +39,6 @@ export function ChatInterface({
 
   const lastUserMessageRef = useRef<HTMLDivElement>(null);
 
-  // const [messages, setMessages] = useState([
-  //   { role: "agent", content: "Hi! I'm ready to help you plan your meals." },
-  // ]);
-
-  // // --- 1. SETUP SOCKET ---
-  // useEffect(() => {
-  //   socket = io("http://localhost:3001");
-
-  //   socket.on("connect", () => {
-  //     console.log("Connected to socket server");
-  //   });
-
-  //   // --- LẮNG NGHE TRẠNG THÁI TỪ AGENT ---
-  //   // Backend cần emit sự kiện này: socket.emit("agent_status", "Searching specifically for pasta...");
-  //   socket.on("agent_status", (status: string) => {
-  //     setAgentStatus(status);
-  //   });
-
-  //   socket.on("stream_chunk", (token: string) => {
-  //     // Khi bắt đầu nhận text, ta có thể tắt status hoặc giữ nguyên tùy ý
-  //     // Ở đây ta giữ nguyên để user biết nó đang làm gì song song với việc gen text
-  //     setMessages((prev) => {
-  //       const newMessages = [...prev];
-  //       const lastMsg = newMessages[newMessages.length - 1];
-
-  //       if (lastMsg.role === "agent") {
-  //         newMessages[newMessages.length - 1] = {
-  //           ...lastMsg,
-  //           content: lastMsg.content + token,
-  //         };
-  //       }
-  //       return newMessages;
-  //     });
-  //   });
-
-  //   socket.on("stream_done", () => {
-  //     setIsGenerating(false);
-  //     setAgentStatus(null); // Xóa trạng thái thinking khi xong
-  //   });
-
-  //   socket.on("error", (err) => {
-  //     console.error("Socket error:", err);
-  //     setIsGenerating(false);
-  //     setAgentStatus(null);
-  //   });
-
-  //   return () => {
-  //     socket.disconnect();
-  //   };
-  // }, []);
 
   // --- 2. LOGIC SCROLL ---
   useEffect(() => {
@@ -97,20 +54,13 @@ export function ChatInterface({
 
   // --- 3. HANDLE SEND ---
   const handleSend = () => {
+
+
     if (!input.trim() || isGenerating) return;
     
     const userText = input;
     setInput("");
-    // setIsGenerating(true);
-    // setAgentStatus("Thinking..."); // Set trạng thái mặc định ban đầu
 
-    // setMessages(prev => [
-    //   ...prev, 
-    //   { role: "user", content: userText },
-    //   { role: "agent", content: "" } 
-    // ]);
-    
-    // socket.emit("chat_message", userText);
     onSendMessage(userText);
 
   };
@@ -118,13 +68,35 @@ export function ChatInterface({
   return (
     <div className="grid grid-rows-[auto_1fr_auto] h-full bg-slate-50 border-r border-slate-200 overflow-hidden">
       
-      {/* HEADER */}
-      <div className="p-6 border-b border-slate-200/50 bg-white shrink-0 z-10">
-        <h2 className="font-display font-bold text-xl text-slate-800 flex items-center gap-2">
-          <Sparkles className="w-5 h-5 text-blue-600 fill-blue-100" />
-          Food Agent
-        </h2>
-        <p className="text-sm text-slate-500 mt-1">Ready to help you plan.</p>
+      {/* --- PHẦN HEADER BẠN MUỐN SỬA --- */}
+      <div className="p-6 border-b border-slate-200/50 bg-white shrink-0 z-10 flex items-center justify-between">
+        
+        {/* Bên trái: Tiêu đề & Mô tả */}
+        <div>
+          <h2 className="font-display font-bold text-xl text-slate-800 flex items-center gap-2">
+            <Sparkles className="w-5 h-5 text-blue-600 fill-blue-100" />
+            Food Agent
+          </h2>
+          <p className="text-sm text-slate-500 mt-1">Ready to help you plan.</p>
+        </div>
+
+        <div className="flex items-center gap-3 bg-slate-50 px-3 py-1.5 rounded-full border border-slate-100">
+          <div className="flex items-center gap-1.5">
+            <BrainCircuit 
+              className={`w-4 h-4 ${isMemoryMode ? "text-blue-600" : "text-slate-400"}`} 
+            />
+            <span className={`text-xs font-semibold ${isMemoryMode ? "text-blue-700" : "text-slate-500"}`}>
+              Memory
+            </span>
+          </div>
+          {/* Component Switch (Nếu dùng Shadcn UI) */}
+          <Switch 
+            checked={isMemoryMode}
+            onCheckedChange={onToggleMemory}
+            className="data-[state=checked]:bg-blue-600 h-5 w-9"
+          />
+        </div>
+        
       </div>
 
       {/* BODY */}
