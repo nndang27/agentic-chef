@@ -3,7 +3,7 @@ import fs from "fs";
 import { create } from "youtube-dl-exec"; // Wrapper xịn cho yt-dlp
 
 // Khởi tạo wrapper (tự tìm đường dẫn yt-dlp trong máy)
-const youtubedl = create("/opt/homebrew/bin/yt-dlp"); // Hoặc chỉ cần 'yt-dlp' nếu đã add vào PATH
+const youtubedl = create("yt-dlp"); // Hoặc chỉ cần 'yt-dlp' nếu đã add vào PATH
 
 export const downloadTikTok = async (videoUrl: string, outputFolder: string = "downloads") => {
   // 1. Tạo folder download nếu chưa có

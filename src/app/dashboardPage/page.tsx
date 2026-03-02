@@ -216,7 +216,9 @@ useEffect(() => {
       const token = await getToken();
       console.log("userId: ", userId);
       if (token) {
-        socketRef.current = io(`http://${process.env.BACKEND_IP}`, { // "http://localhost:3001",
+        console.log("process.env.BACKEND_IP: ", process.env.BACKEND_IP);
+
+        socketRef.current = io(`http://213.173.98.25:15810`, { // "http://localhost:3001",
           auth: {
             token: token // Server sẽ đọc cái này ở socket.handshake.auth.token
           }
