@@ -5,7 +5,9 @@
 import "./src/env.js";
 
 /** @type {import("next").NextConfig} */
+
 const coreConfig = {
+  output: "standalone",
   images: {
     remotePatterns: [
       {

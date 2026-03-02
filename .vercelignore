@@ -1,0 +1,5 @@
+# .vercelignore
+.git
+.next
+node_modules
+public/download_vids
