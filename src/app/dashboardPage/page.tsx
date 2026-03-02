@@ -88,10 +88,10 @@ const mockVideos = {
   "/dowj658917.mp4",
 ],
   path: [
-    "/download_vids/undefined/tiktok_1772335658906.mp4",
-    "/download_vids/undefined/tiktok_1772335658914.mp4",
-    "/download_vids/undefined/tiktok_1772335658915.mp4",
-    "/download_vids/undefined/tiktok_1772335658917.mp4",
+    "https://res.cloudinary.com/ddnrrg0hp/video/upload/v1772451950/food-agent-videos/muou3mpptvujhkjoeguh.mp4",
+    "/https://res.cloudinary.com/ddnrrg0hp/video/upload/v1772451947/food-agent-videos/jjqggtt7ddfahnfvf7od.mp4",
+    "https://res.cloudinary.com/ddnrrg0hp/video/upload/v1772451740/food-agent-videos/o2j4xkpyjczvcfrwvwzc.mp4",
+    "https://res.cloudinary.com/ddnrrg0hp/video/upload/v1772451739/food-agent-videos/n7drbubbuml7d4dj4soc.mp4",
   ]
 
 };
