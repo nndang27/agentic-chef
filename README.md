@@ -1,6 +1,6 @@
 # 🍳 Recipe Optimm: Agentic AI for Menu & Recipe Optimization
 
-Welcome to **Recipe Optimm**, an AI-powered platform designed to revolutionize meal planning and grocery shopping. By leveraging autonomous AI agents, this system intelligently optimizes daily menus, suggests personalized recipes, and dynamically fetches real-time ingredient prices from supermarkets to help users save time and budget effectively.
+Welcome to **Recipe Optimm**, an AI-powered platform designed to revolutionize meal planning and grocery shopping. By leveraging autonomous AI agents, this system intelligently suggests personalized recipes, and dynamically fetches real-time ingredient prices from supermarkets to help users save time and budget effectively, searching videos for cooking and optimized the route go to the market.
 
 ## 🧠 Agentic Architecture
 
