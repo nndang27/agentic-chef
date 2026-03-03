@@ -133,16 +133,20 @@ io.use(async (socket, next) => {
                 console.log("finished_brances: ", finished_brances);
                 if (!isMapSent && finished_brances.includes("search_map_done")){
                     const optimized_route_map = data.output.optimized_route_map;
-                    const result_map = {
-                      optimized_route_map: optimized_route_map,
-                      current_origin_address: data.output.current_origin_address,
-                      current_destination_address: data.output.current_destination_address,
-                      brand_preference: data.output.brand_preference,
-                      user_current_location: data.output.user_current_location,
-                    }
-                    socket.emit("map_result", result_map);
 
-                    socket.emit("stream_chunk", "✅ Search map done\n");
+                    if(optimized_route_map===null){
+                      socket.emit("stream_chunk", "❌ Search map failed, please remember turn on your location\n");
+                    }else{
+                      const result_map = {
+                          optimized_route_map: optimized_route_map,
+                          current_origin_address: data.output.current_origin_address,
+                          current_destination_address: data.output.current_destination_address,
+                          brand_preference: data.output.brand_preference,
+                          user_current_location: data.output.user_current_location,
+                      }
+                      socket.emit("map_result", result_map);
+                      socket.emit("stream_chunk", "✅ Search map done\n");
+                    }
                     isMapSent = true;
                 }
                 if (!isVideoSent && finished_brances.includes("search_video_done")){

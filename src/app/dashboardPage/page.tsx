@@ -148,11 +148,8 @@ const executeSearch = async () => {
   try {
     // 1. Luôn lấy vị trí hiện tại trước
     const location = await getCurrentLocation();
-    const currentUserLocation = { 
-        latitude: location.lat, 
-        longitude: location.lng 
-    };
-
+    const currentUserLocation = location ? {latitude: location.latitude, longitude: location.longitude} : null;
+ 
 
     // 2. Gọi API tìm kiếm
     // Lưu ý: Lúc mới load trang, formData có thể null/rỗng, 
@@ -358,8 +355,8 @@ useEffect(() => {
     ]);
 
     const location = await getCurrentLocation();
-    const a = {lat: location.lat, lng: location.lng};
-    console.log("a: ", a, socketRef.current);
+    const a = location ?{latitude: location.latitude, longitude: location.longitude} : null;
+    console.log("location when hancle message: ", a);
     socketRef.current?.emit("chat_message", {msg, userCurrentLocation:a, isMemoryMode: isMemoryMode});
   };
 

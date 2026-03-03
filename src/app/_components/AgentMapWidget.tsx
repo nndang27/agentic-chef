@@ -154,7 +154,7 @@ const handleTextInput = (field: string, text: string) => {
 
     try {
       const location = await getCurrentLocation();
-      const currentUserLocation = {latitude: location.lat, longitude: location.lng};
+      const currentUserLocation = location ? {latitude: location.latitude, longitude: location.longitude} : null;
 
       const Location_List = await getNearestSupermarket(currentUserLocation, formData?.originId, formData?.destinationId, formData?.supermarket);
       let originLocation = null;

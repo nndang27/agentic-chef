@@ -89,10 +89,15 @@ export async function getNearestSupermarket(currentUserLocation: {latitude: numb
 
     }
     else if (originId === null && destinationId === null) {
+        if (currentUserLocation === null) {
+            return null;
+        }
         const nearestSupermarket = await getSupermarketByRadius(currentUserLocation.latitude, currentUserLocation.longitude, 2000, SUPERMARKET_NAME);
         return nearestSupermarket;
     }
-
+    else if (originId === null && destinationId && currentUserLocation === null) {
+        return null;
+    }
     try {
         // Gọi Routes API
         const routeRes = await axios.post('https://routes.googleapis.com/directions/v2:computeRoutes', {

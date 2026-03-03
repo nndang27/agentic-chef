@@ -45,7 +45,7 @@ export function Directions({ agentMapResult, isBigMap = true, padding = 50 }: {a
 
         let startLocation = null;
         if(agentMapResult.current_origin_address.adressName === null){
-          startLocation = {lat: agentMapResult.user_current_location.lat, lng: agentMapResult.user_current_location.lng};
+          startLocation = {lat: agentMapResult.user_current_location.latitude, lng: agentMapResult.user_current_location.longitude};
         }else{
           // startLocation = agentMapResult.current_origin_address.location;
           startLocation = {lat: agentMapResult.current_origin_address.location.latitude, lng: agentMapResult.current_origin_address.location.longitude};

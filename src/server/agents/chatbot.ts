@@ -89,14 +89,25 @@ export const generalChatNode = async (state: typeof AgentState.State, config: an
 
     // --- CASE: SEARCH_MAP ---
     if (activeAgents.includes("SEARCH_MAP")) {
-        // Lưu ý: Check kỹ chính tả addressName hay adressName trong state của bạn
-        executionContext["MAP_RESULT"] = {
-            status: "Executed",
-            origin: state.current_origin_address?.addressName || "Unknown origin", 
-            destination: state.current_destination_address?.addressName || "Unknown destination",
-            brand: state.brand_preference,
+        if(state.optimized_route_map===null){
+            executionContext["MAP_RESULT"] = {
+                status: "Failed",
+                origin: state.current_origin_address?.addressName || "Unknown origin", 
+                destination: state.current_destination_address?.addressName || "Unknown destination",
+                brand: state.brand_preference,
             // Có thể thêm state.optimized_route_map nếu agent Map trả về kết quả cụ thể
-        };
+            };
+        }
+        else{
+            // Lưu ý: Check kỹ chính tả addressName hay adressName trong state của bạn
+            executionContext["MAP_RESULT"] = {
+                status: "Executed",
+                origin: state.current_origin_address?.addressName || "Unknown origin", 
+                destination: state.current_destination_address?.addressName || "Unknown destination",
+                brand: state.brand_preference,
+                // Có thể thêm state.optimized_route_map nếu agent Map trả về kết quả cụ thể
+            };
+        }
     }
 
     // --- CASE: GENERAL_CHAT (Tư vấn/Small talk) ---

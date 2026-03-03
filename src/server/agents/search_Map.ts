@@ -5,6 +5,7 @@ import { getNearestSupermarket, autoCompleteAddress, getLatLongFromID } from "..
 
 export const searchMapNode = async (state: typeof AgentState.State, config: any) => {
     const userCurrentLocation = config.configurable?.user_current_location;
+    console.log("userCurrentLocation99999999: ", userCurrentLocation);
     let originID = null;
     let destinationID = null;
     let current_origin_address = null;
@@ -47,19 +48,19 @@ export const searchMapNode = async (state: typeof AgentState.State, config: any)
             brand_preference = state.brand_preference;
         }
     }
-    console.log("originID: ", originID);
-    console.log("destinationID: ", destinationID);
-    console.log("brand_preference: ", brand_preference);
-    console.log("userCurrentLocation: ", userCurrentLocation);
+    // console.log("originID: ", originID);
+    // console.log("destinationID: ", destinationID);
+    // console.log("brand_preference: ", brand_preference);
+    // console.log("userCurrentLocation: ", userCurrentLocation);
 
     const nearestSupermarket = await getNearestSupermarket(userCurrentLocation, originID, destinationID, brand_preference);
-    console.log("nearestSupermarket: ", nearestSupermarket);
+    // console.log("nearestSupermarket: ", nearestSupermarket);
     console.timeEnd("⏱️ SEARCH MAP running TIME:");
     console.log("**********************************************************************\n");
     
     return { 
         finished_branches: ["search_map_done"], 
-        optimized_route_map: nearestSupermarket,
+        optimized_route_map: nearestSupermarket || null,
         current_origin_address: {  
             adressName: current_origin_address?.placePrediction.text.text || null,
             adressID: originID || null,
@@ -71,7 +72,8 @@ export const searchMapNode = async (state: typeof AgentState.State, config: any)
             location: destinationLocation || null
         },
         brand_preference: brand_preference,
-        user_current_location: userCurrentLocation,
+        user_current_location: userCurrentLocation || null,
     };
 };
+
 
