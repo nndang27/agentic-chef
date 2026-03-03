@@ -7,7 +7,7 @@ import { OllamaEmbeddings } from "@langchain/ollama";
 export const baseLlm = new ChatOllama({
   model: "llama3.1:8b", //"qwen3:8b", //
   temperature: 0,
-  baseUrl: `http://${process.env.NEXT_PUBLIC_OLLAMA_HOST}`,
+  baseUrl: `http://${process.env.NEXT_PUBLIC_OLLAMA_HOST}` || "http://127.0.0.1:11434",
   
 });
 
@@ -17,13 +17,13 @@ export const llm_chatbot = new ChatOllama({
   temperature: 0.3,     // factual QA
   // topK: 1,             // greedy
   // topP: 1.0,
-  baseUrl: `http://${process.env.NEXT_PUBLIC_OLLAMA_HOST}`,
+  baseUrl: `http://${process.env.NEXT_PUBLIC_OLLAMA_HOST}`|| "http://127.0.0.1:11434",
 });
 
 export const llm_semantic_memory = new ChatOllama({
   model: "llama3.1:8b",
   temperature: 0.1, 
-  baseUrl: `http://${process.env.NEXT_PUBLIC_OLLAMA_HOST}`,
+  baseUrl: `http://${process.env.NEXT_PUBLIC_OLLAMA_HOST}`|| "http://127.0.0.1:11434",
   // numCtx: 8192, 
   format: "json",
 });
@@ -34,13 +34,13 @@ export const llm_summarizer = new ChatOllama({
   temperature: 0.3,     // factual QA
   // topK: 1,             // greedy
   // topP: 1.0,
-  baseUrl: `http://${process.env.NEXT_PUBLIC_OLLAMA_HOST}`,
+  baseUrl: `http://${process.env.NEXT_PUBLIC_OLLAMA_HOST}`|| "http://127.0.0.1:11434",
 });
 
 export const llm_consolidate = new ChatOllama({
   model: "llama3.1:8b",
   temperature: 0.1, 
-  baseUrl: `http://${process.env.NEXT_PUBLIC_OLLAMA_HOST}`,
+  baseUrl: `http://${process.env.NEXT_PUBLIC_OLLAMA_HOST}`|| "http://127.0.0.1:11434",
   // numCtx: 8192, 
   format: "json",
 });
@@ -48,5 +48,5 @@ export const llm_consolidate = new ChatOllama({
 
 export const embeddingsLLM = new OllamaEmbeddings({
     model: "mxbai-embed-large",
-    baseUrl: `http://${process.env.NEXT_PUBLIC_OLLAMA_HOST}`,
+    baseUrl: `http://${process.env.NEXT_PUBLIC_OLLAMA_HOST}`|| "http://127.0.0.1:11434",
 });
