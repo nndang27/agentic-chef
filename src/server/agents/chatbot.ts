@@ -5,6 +5,7 @@ import { llm_chatbot } from "../lib/llm";
 import { DEFAULT_PROFILE } from "../memory/userProfile";
 import { getVectorStore } from "../graph/workflow";
 import { UserProfileService } from "../memory/userProfile";
+import { dispatchCustomEvent } from "@langchain/core/callbacks/dispatch";
 
 export const generalChatNode = async (state: typeof AgentState.State, config: any) => {
     console.time("⏱️ generalChatNode time");
@@ -127,6 +128,12 @@ export const generalChatNode = async (state: typeof AgentState.State, config: an
     // ${JSON.stringify(current_profile, null, 2)}
     // 4. Xây dựng Prompt tổng hợp
     console.log("memoryContextString: ", memoryContextString);
+    await dispatchCustomEvent(
+        "node_progress", // Tên sự kiện (bạn tự đặt)
+        { message: `Making response...` }, 
+        config 
+    );
+
     const systemPrompt = `
         You are a smart, friendly, and personalized Cooking Assistant named "Chef bot".
         Your goal is to analyze User Input + Tool Results + (Optional) Memory + (Optional) Recent Chat History to provide a helpful, natural response.

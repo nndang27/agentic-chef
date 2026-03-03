@@ -191,9 +191,9 @@ export async function getColesRecipeList(userQuery: string, url: string): Promis
         }
     });
 
-    console.log("response.data: ", response.data);
+    // console.log("response.data: ", response.data);
     const recipes = parseRecipeList(response.data);
-    console.log("recipes: ", recipes);
+    // console.log("recipes: ", recipes);
     return recipes;
 
   } catch (error: any) {

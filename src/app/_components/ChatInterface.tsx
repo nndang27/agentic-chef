@@ -44,7 +44,7 @@ export function ChatInterface({
   const lastUserMessageRef = useRef<HTMLDivElement>(null);
 
   // --- STATE CHO QUICK MODE ---
-  const [isQuickPanelOpen, setIsQuickPanelOpen] = useState(false);
+  const [isQuickPanelOpen, setIsQuickPanelOpen] = useState(true);
   const [activeModes, setActiveModes] = useState({
     RECIPE: false, PRICE: false, MAP: false, VIDEO: false
   });

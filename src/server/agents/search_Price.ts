@@ -7,6 +7,8 @@ import test_recipe from "../test_recipe.json" with { type: "json" };
 // 2. Destructure để lấy dữ liệu bạn cần
 // const { test_recipe } = data;
 import { type RecipeData } from "../graph/state";
+import { dispatchCustomEvent } from "@langchain/core/callbacks/dispatch";
+
 // Schema for a single ingredient item
 const IngredientItemSchema = z.object({
   id: z.number().describe("The ID or index corresponding to the input list."),
@@ -276,7 +278,7 @@ function postProcessSearchResults(query: string, items: ValidatedProductItem[], 
 // 
 export const searchPriceAgentNode = async (state: typeof AgentState.State, config: any) => {
     console.log("**********************************************************************");
-    console.time("⏱️ SEARCH PRICE running TIME:");
+    console.log("⏱️ SEARCH PRICE running TIME:");
     let recipesList: RecipeData[] = [];
     // ============= CHECK QUICK MODE =========================
     if(state.quickMode.length > 0){
@@ -285,28 +287,28 @@ export const searchPriceAgentNode = async (state: typeof AgentState.State, confi
                 const split_ingredients = state.quickQuery.priceIngredients.split(',').map(item => item.trim());
                 state.cached_ingredients = split_ingredients;
                 recipesList = split_ingredients.map((ingredientName, index) => {
-                return {
-                  id: index + 100000, // Tạo ID giả để không trùng lặp
-                  title: ingredientName, // Dùng tên nguyên liệu làm tiêu đề để hiển thị
-                  image: "", // Không có ảnh
-                  serves: [],
-                  cook_time: [],
-                  prep_time: null,
-                  
-                  // Quan trọng: Gán string vào item của Ingredient
-                  ingredients: [
-                    {
-                      item: ingredientName,
-                      amount: null, 
-                      notes: null
-                    }
-                  ],
-                  
-                  steps: [], // Không có bước nấu
-                  nutrition_estimate: {},
-                  chef_tips: ""
-                } as RecipeData;
-              });
+                  return {
+                    id: index + 100000, // Tạo ID giả để không trùng lặp
+                    title: ingredientName, // Dùng tên nguyên liệu làm tiêu đề để hiển thị
+                    image: "", // Không có ảnh
+                    serves: [],
+                    cook_time: [],
+                    prep_time: null,
+                    
+                    // Quan trọng: Gán string vào item của Ingredient
+                    ingredients: [
+                      {
+                        item: ingredientName,
+                        amount: null, 
+                        notes: null
+                      }
+                    ],
+                    
+                    steps: [], // Không có bước nấu
+                    nutrition_estimate: {},
+                    chef_tips: ""
+                  } as RecipeData;
+                });
 
             }
             else if(state.quickQuery.priceIngredients === "" && state.quickQuery.recipeDish !==""){
@@ -383,6 +385,12 @@ export const searchPriceAgentNode = async (state: typeof AgentState.State, confi
           // -------- Lọc sản phẩm -------------------
           for (const query of SearchedPrice) {
               const productName = query.data.query;
+              console.log(12)
+              await dispatchCustomEvent(
+                "node_progress", // Tên sự kiện (bạn tự đặt)
+                { message: `Searching price for ${productName} in ${supermarket}...` }, 
+                config 
+              );
               const productsList = query.data.results
                 .map((item, index) => `[${index}]: ${item.product_name}`)
                 .join("\n");
@@ -431,9 +439,8 @@ export const searchPriceAgentNode = async (state: typeof AgentState.State, confi
           });
       
     }
-    console.log(".......................\n");
     console.log("recipesListWithPrice: \n", JSON.stringify(recipesListWithPrice, null, 2));
-    console.timeEnd("⏱️ SEARCH PRICE running TIME:");
+    console.log("⏱️ SEARCH PRICE running TIME:");
     console.log("**********************************************************************\n");
     
     return {

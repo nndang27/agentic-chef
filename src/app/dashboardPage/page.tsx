@@ -281,11 +281,15 @@ useEffect(() => {
       });
     });
 
+    
+    socketRef.current.on("agent_noti", (data) => {
+       setAgentStatus(data);
+       
+    });
     // Khi Agent tìm xong map (Backend cần gửi sự kiện này kèm dữ liệu)
     socketRef.current.on("map_result", (data) => {
-      console.log("map_result: ", data);
        setIsSearchingMap(false); // Tắt loading ở Map
-       if(!data?.optimized_route_map){
+       if(data?.optimized_route_map){
           setMapDestination(data); // Cập nhật Map
        }
        
@@ -372,11 +376,14 @@ useEffect(() => {
   // 2. THÊM HÀM NÀY: Xử lý khi user bấm nút Stop
   const handleStopGeneration = () => {
     if (!isGenerating) return;
-
     // A. Báo cho Backend biết để dừng xử lý (Tiết kiệm token & tài nguyên)
     socketRef.current?.emit("interrupt_agent"); 
 
     // B. Cập nhật giao diện ngay lập tức
+    setIsSearchingRecipe(false);
+    setIsSearchingVideo(false);
+    setIsSearchingPrice(false);
+    setIsSearchingMap(false);
     setIsGenerating(false);
     setAgentStatus("Stopped by user");
     

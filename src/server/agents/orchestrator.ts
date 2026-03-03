@@ -3,6 +3,7 @@ import { baseLlm } from "../lib/llm";
 import { AgentState } from "../graph/state";
 import { SystemMessage , HumanMessage} from "@langchain/core/messages";
 import { UserProfileService } from "../memory/userProfile";
+import { dispatchCustomEvent } from "@langchain/core/callbacks/dispatch";
 // Import schema vừa định nghĩa ở trên
 
 // --- SUB-SCHEMAS ---
@@ -242,7 +243,7 @@ Your objective is to analyze User Input + Chat History + (Optional) Long-term Co
 
 export const orchestratorNode = async (state: typeof AgentState.State, config: any) => {
     console.log("**********************************************************************");
-    console.time("⏱️ ORCHESTRATOR running TIME:");
+    console.log("⏱️ ORCHESTRATOR running TIME:");
     
     
     const messages = state.messages;
@@ -295,7 +296,12 @@ export const orchestratorNode = async (state: typeof AgentState.State, config: a
 
     try {
         // if (state.isMemoryMode) {
-
+          await dispatchCustomEvent(
+              "node_progress", // Tên sự kiện (bạn tự đặt)
+              { message: `analysing user's prompt...` }, 
+              config 
+          );
+    
           const messagesPayload = [
               // A. System Prompt (Luật lệ cố định)
               new SystemMessage(SYSTEM_PROMPT),
@@ -340,6 +346,11 @@ export const orchestratorNode = async (state: typeof AgentState.State, config: a
     let general_chat_type = null;
     let general_response_guideline = null;
     // Duyệt qua từng Intent object để xử lý logic riêng biệt
+    await dispatchCustomEvent(
+        "node_progress", // Tên sự kiện (bạn tự đặt)
+        { message: `Classifying user's intent...` }, 
+        config 
+    );
 
     for (const intent of result.intents) {
         switch (intent.intent) {

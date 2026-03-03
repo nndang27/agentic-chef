@@ -9,6 +9,7 @@ import { SemanticCache } from "../services/semanticCache.js";
 import { v4 as uuidv4 } from 'uuid';
 import { v2 as cloudinary } from 'cloudinary';
 import fs from 'fs'; // Import fs để xóa file sau khi upload (Clean up)
+import { dispatchCustomEvent } from "@langchain/core/callbacks/dispatch";
 
 // 1. Cấu hình Cloudinary
 cloudinary.config({ 
@@ -80,9 +81,9 @@ export const uploadAllVideos = async (validResults: any[]) => {
 };
 
 // 2. Hàm Logic chính của Node
-export const tiktokAgentNode = async (state: typeof AgentState.State) => {
+export const tiktokAgentNode = async (state: typeof AgentState.State, config: any) => {
     console.log("**********************************************************************\n");
-    console.time("⏱️ SEARCH VIDEO running TIME:");
+    console.log("⏱️ SEARCH VIDEO running TIME:");
   
   //Check mode:
   let userQuery ="";
@@ -131,6 +132,11 @@ export const tiktokAgentNode = async (state: typeof AgentState.State) => {
   // console.log("abc");
   // }
   // =====================================================================
+  await dispatchCustomEvent(
+    "node_progress", // Tên sự kiện (bạn tự đặt)
+    { message: `Scraping list of videos for ${userQuery}...` }, 
+    config 
+  );
   const searchResultJson = await searchTikTok(userQuery);
   const videos_data = searchResultJson
     .sort((a: any, b: any) => (b.stats.likeCount || 0) - (a.stats.likeCount || 0))
@@ -162,7 +168,11 @@ export const tiktokAgentNode = async (state: typeof AgentState.State) => {
 
   // --- BƯỚC 2: ANALYZE & SCORE (Dùng LLM để chấm điểm) ---
   console.log("🧠 TikTok Agent: Đang phân tích chất lượng video...");
-
+  await dispatchCustomEvent(
+    "node_progress", // Tên sự kiện (bạn tự đặt)
+    { message: `Analyzing video quality for ${userQuery}...` }, 
+    config 
+  );
   const analyzerLLM = baseLlm.withStructuredOutput(VideoAnalysisList);
   const analysisResult = await analyzerLLM.invoke([
     new SystemMessage(`
@@ -200,6 +210,12 @@ export const tiktokAgentNode = async (state: typeof AgentState.State) => {
 
   // BƯỚC 4: Parallel Download (Tải song song)
   // Map mỗi video thành một Promise download
+  await dispatchCustomEvent(
+    "node_progress", // Tên sự kiện (bạn tự đặt)
+    { message: `Downloading videos...` }, 
+    config 
+  );
+  
   const groupVideoID = uuidv4();
   const downloadPromises = goodVideos.map(async (videoAnalysis) => {
     const originalVideo = videos_data.find(v => v.index === videoAnalysis.index);
@@ -207,9 +223,9 @@ export const tiktokAgentNode = async (state: typeof AgentState.State) => {
 
     // const fullUrl = `https://www.tiktok.com/@${originalVideo.author}/video/${originalVideo.id}`;
 
-    try {
+  try {
       // Gọi tool download
-      console.log("originalVideo: ", originalVideo);
+
       const path = await downloadTikTok(originalVideo.url, `../../public/download_vids/${groupVideoID}`);
       return { video_id: originalVideo.index, url: originalVideo.url, path };
     } catch (e) {
@@ -225,7 +241,7 @@ export const tiktokAgentNode = async (state: typeof AgentState.State) => {
   const validResults = results.filter(r => r && r.path != null);
 
   console.log("validResults: \n", validResults);
-  console.timeEnd("⏱️ SEARCH VIDEO running TIME:");
+  console.log("⏱️ SEARCH VIDEO running TIME:");
   console.log("**********************************************************************\n");
   const finalUrls = await uploadAllVideos(validResults);
   

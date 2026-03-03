@@ -8,9 +8,17 @@ import {
 import { AgentState } from "../graph/state";
 import { llm_summarizer } from "../lib/llm";
 import { getMessageClusters } from "../utils/clusterMessage";
+import { dispatchCustomEvent } from "@langchain/core/callbacks/dispatch";
 
-export const summarizeConversationNode = async (state: typeof AgentState.State) => {
+
+export const summarizeConversationNode = async (state: typeof AgentState.State, config) => {
   
+  await dispatchCustomEvent(
+    "node_progress", // Tên sự kiện (bạn tự đặt)
+    { message: `Managing the history of conversation...` }, 
+    config 
+  );
+
   const summary = state.summary;
   const messages = state.messages;
   

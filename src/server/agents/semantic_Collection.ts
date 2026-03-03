@@ -9,6 +9,7 @@ import { Document } from "@langchain/core/documents";
 import { v4 as uuidv4 } from "uuid";
 import type { TripleFact } from "../graph/state";
 import { llm_summarizer } from "../lib/llm"
+import { dispatchCustomEvent } from "@langchain/core/callbacks/dispatch";
 
 const driver = neo4j.driver(
     process.env.NEO4J_URI ,
@@ -95,6 +96,12 @@ export const searchMemoryNode = async (state: typeof AgentState.State, config: a
     Output: { "facts": [{ "subject": "Yaz", "predicate": "leads", "object": "team", "context": "AI department" }] }
     `;
 
+    await dispatchCustomEvent(
+        "node_progress", // Tên sự kiện (bạn tự đặt)
+        { message: `Extracting facts for semantic memory...` }, 
+        config 
+    );
+
     const result = await structuredLLM.invoke([
         new SystemMessage(systemPrompt),
         new HumanMessage(rawInput)
@@ -167,7 +174,11 @@ export const searchMemoryNode = async (state: typeof AgentState.State, config: a
     // =================================================================================
     // BƯỚC 2: GRAPH TRAVERSAL (PROPERTY GRAPH EXPANSION)
     // =================================================================================
-    
+    await dispatchCustomEvent(
+        "node_progress", // Tên sự kiện (bạn tự đặt)
+        { message: `Extracting the user's past experience...` }, 
+        config 
+    );
     let graphConnections: string[] = []; // Mảng chứa các quan hệ tìm được
         const session = driver.session(); 
 

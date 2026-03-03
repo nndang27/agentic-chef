@@ -2,7 +2,7 @@
 import { AgentState } from "../graph/state";
 import { getNearestSupermarket, autoCompleteAddress, getLatLongFromID } from "../tools/getNearestSupermarket";
 // import { RunnableConfig } from "@langchain/core/runnables";
-
+import { dispatchCustomEvent } from "@langchain/core/callbacks/dispatch";
 export const searchMapNode = async (state: typeof AgentState.State, config: any) => {
     const userCurrentLocation = config.configurable?.user_current_location;
     console.log("userCurrentLocation99999999: ", userCurrentLocation);
@@ -97,7 +97,12 @@ export const searchMapNode = async (state: typeof AgentState.State, config: any)
     // console.log("destinationID: ", destinationID);
     // console.log("brand_preference: ", brand_preference);
     // console.log("userCurrentLocation: ", userCurrentLocation);
-
+    await dispatchCustomEvent(
+        "node_progress", // Tên sự kiện (bạn tự đặt)
+        { message: `Searching for optimized route...` }, 
+        config 
+    );
+  
     const nearestSupermarket = await getNearestSupermarket(userCurrentLocation, originID, destinationID, brand_preference);
     // console.log("nearestSupermarket: ", nearestSupermarket);
     console.timeEnd("⏱️ SEARCH MAP running TIME:");

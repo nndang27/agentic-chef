@@ -9,6 +9,7 @@ import { GetColesRecipeDetail } from "../tools/getRecipeDetails";
 import { parseRecipeStructured } from "../tools/getRecipeDetails";
 import { getColesRecipeList } from "../tools/getRecipeList";
 import { type RecipeData } from "../graph/state";
+import { dispatchCustomEvent } from "@langchain/core/callbacks/dispatch";
 
 const RecipeSchema = z.object({
 //   name: z.string().describe("The name of the dish."),
@@ -91,7 +92,7 @@ export const recipeAgentNode = async (state: typeof AgentState.State, config: an
   }
 
   console.log("**********************************************************************\n");
-  console.time("⏱️ SEARCH RECIPE running TIME:");
+  console.log("⏱️ SEARCH RECIPE running TIME:");
   if(userQuery[0] === ""){
     return {
       finished_branches: ["search_recipe_done"],
@@ -107,15 +108,22 @@ export const recipeAgentNode = async (state: typeof AgentState.State, config: an
   for (const userDish of userQuery) {
         const ColesUrl = createColesUrl(userDish);
         console.log("ColesUrl: ", ColesUrl);
+        await dispatchCustomEvent(
+          "node_progress", // Tên sự kiện (bạn tự đặt)
+          { message: `Searching list of recipes for ${userDish}...` }, 
+          config 
+        );
         const recipeList = await getColesRecipeList(userDish, ColesUrl);
-        console.log("Best recipe: ",recipeList[0]);
         // const bestRecipeLink = recipeList?[0].recipe_url;
         const bestRecipeLink = recipeList[0]?.recipe_url;
+        await dispatchCustomEvent(
+          "node_progress", // Tên sự kiện (bạn tự đặt)
+          { message: `Extracting steps for cooking ${userDish}...` }, 
+          config 
+        );
         const content_scraped = await GetColesRecipeDetail(bestRecipeLink);
         // Kiểm tra sơ bộ xem content có đủ dài không (tránh trang lỗi)
-        console.log("content_scraped: ", content_scraped);
         const parsed = parseRecipeStructured(content_scraped);
-        console.log("parsed: ", parsed);
         if (content_scraped.length > 100) { 
 
             sourceUrl = ColesUrl;
@@ -193,10 +201,13 @@ export const recipeAgentNode = async (state: typeof AgentState.State, config: an
                 ### FINAL OUTPUT FORMAT:
                 Return ONLY the valid JSON object matching the Schema.
                 `;
+            
+            await dispatchCustomEvent(
+                "node_progress", // Tên sự kiện (bạn tự đặt)
+                { message: `Structuring recipe results...` }, 
+                config 
+            );
             const result = await structuredLlm.invoke(prompt);
-            console.log("Recipe result: \n", result);
-            console.timeEnd("⏱️ recipeAgentNode time");
-
             const reFormattedRecipes: RecipeData = {
                 id: 1, // Tự sinh ID (hoặc dùng Date.now())
                 
@@ -229,8 +240,8 @@ export const recipeAgentNode = async (state: typeof AgentState.State, config: an
         }
             // ---------------------------------------------------------------
     }
-    console.log("ListRecipe: \n", ListRecipe);
-    console.timeEnd("⏱️ SEARCH RECIPE running TIME:");
+    console.log("ListRecipe: \n", JSON.stringify(ListRecipe), null, 2);
+    console.log("⏱️ SEARCH RECIPE running TIME:");
     console.log("**********************************************************************\n");
     
     return { 

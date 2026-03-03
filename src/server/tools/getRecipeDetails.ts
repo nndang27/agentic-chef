@@ -166,8 +166,8 @@ export async function GetColesRecipeDetail(url: string): Promise<string> {
     // }
 
     // console.log("✅ Kết quả Gộp (Markdown):");
-    console.log("response.data: ", response.data); // In thử
-    console.log("=========================================================");
+    // console.log("response.data: ", response.data); // In thử
+    // console.log("=========================================================");
 
     return response.data;
 

@@ -77,6 +77,8 @@ io.use(async (socket, next) => {
       }
     };
 
+
+
     socket.on("chat_message", async (payload: { msg: string, userCurrentLocation: any, isMemoryMode:boolean , quickMode?: string[], quickQuery?: quickDataType}) => {
       if (activeControllers.has(socket.id)) {
         activeControllers.get(socket.id)?.abort();
@@ -117,6 +119,14 @@ io.use(async (socket, next) => {
         const emittedNodes = new Set<string>();
         for await (const { event, data, tags, metadata } of eventStream) {
             
+            if (event === "on_custom_event" ) {
+              console.log("on_custom_event data: ", data);
+              if(data.message){
+                socket.emit("agent_noti", `${data.message}\n`);
+              }
+                
+            }
+
             // 1. Bắt sự kiện Tool Start (Ví dụ agent bắt đầu tìm kiếm)
             if (event === "on_chain_start") {
                 const nodeName = metadata?.langgraph_node; 
@@ -148,6 +158,7 @@ io.use(async (socket, next) => {
                       socket.emit("map_result", result_map);
                       socket.emit("stream_chunk", "❌ Search map failed, please remember turn on your location\n");
                     }else{
+                      console.log("optimized_route_map((((999: ", optimized_route_map)
                       const result_map = {
                           optimized_route_map: optimized_route_map,
                           current_origin_address: data.output.current_origin_address,
@@ -237,7 +248,9 @@ io.use(async (socket, next) => {
       console.log(`⚠️ Received interrupt signal from: ${socket.id}`);
       const controller = activeControllers.get(socket.id);
       if (controller) {
+        console.log(111)
         controller.abort(); // <--- Gạt cầu dao!
+        console.log(111)
         activeControllers.delete(socket.id);
         console.log("✂️ Agent execution aborted.");
       }

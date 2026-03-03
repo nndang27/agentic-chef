@@ -8,7 +8,7 @@ import { Document } from "@langchain/core/documents";
 import { AgentState } from "../graph/state";
 import { v5 as uuidv5 } from "uuid";
 import { UserProfileService } from "../memory/userProfile";
-
+import { dispatchCustomEvent } from "@langchain/core/callbacks/dispatch";
 // Định nghĩa các hành động được phép
 const MemoryActionSchema = z.object({
   action: z.enum(["SET", "ADD", "REMOVE"]).describe("The type of operation"),
@@ -144,6 +144,11 @@ export const semantic_memoryAgentNode = async (state: typeof AgentState.State, r
         Determine what needs to change based on the LATEST USER MESSAGE. Return JSON matching the schema.
         `;
 
+    await dispatchCustomEvent(
+        "node_progress", // Tên sự kiện (bạn tự đặt)
+        { message: `Getting the user's profile...` }, 
+        runtime 
+    );
     const structuredLLM = llm_consolidate.withStructuredOutput(MemoryUpdateSchema);
     const result = await structuredLLM.invoke([new SystemMessage(prompt)]);
 
