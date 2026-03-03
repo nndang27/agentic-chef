@@ -118,28 +118,29 @@ function assignContent(result: any, header: string, content: string) {
 export async function GetColesRecipeDetail(url: string): Promise<string> {
   try {
 
-    const targetSelectors = [
-        // Time & Details (Đưa lên đầu để dễ nhìn)
-        '.coles-targeting-RecipeDetailsRecipeDetails', 
+    // const targetSelectors = [
+    //     // Time & Details (Đưa lên đầu để dễ nhìn)
+    //     '.coles-targeting-RecipeDetailsRecipeDetails', 
         
-        // // Ingredients
-        // // '.coles-targeting-RecipeIngredientsCategoryList',
+    //     // // Ingredients
+    //     // // '.coles-targeting-RecipeIngredientsCategoryList',
 
-        // '.coles-targeting-RecipeIngredientsComponent',
+    //     // '.coles-targeting-RecipeIngredientsComponent',
         
-        // // Steps
-        // // '.coles-targeting-RecipeMethodSteps',
-        // '.coles-targeting-RecipeMethodComponent',
+    //     // // Steps
+    //     // // '.coles-targeting-RecipeMethodSteps',
+    //     // '.coles-targeting-RecipeMethodComponent',
         
-        // // Tips
-        // '.coles-targeting-RecipeTipsComponent',
+    //     // // Tips
+    //     // '.coles-targeting-RecipeTipsComponent',
         
-        // // Nutrition
-        // // '.css-r1tp55, .coles-targeting-NutritionalInformation' 
+    //     // // Nutrition
+    //     // // '.css-r1tp55, .coles-targeting-NutritionalInformation' 
 
-        '.coles-targeting-RecipeContainerRecipeContainer'
-    ].join(','); // Nối lại bằng dấu phẩy
+    //     '.coles-targeting-RecipeContainerRecipeContainer'
+    // ].join(','); // Nối lại bằng dấu phẩy
 
+    const targetSelectors = [".recipe-cooking-info", ".recipe-ingredients-section", ".recipe-method-steps", ".recipe-nutrition-widget-container"] //TASTE
 
     const response = await axios.get(`https://r.jina.ai/${url}`, {
         headers: {

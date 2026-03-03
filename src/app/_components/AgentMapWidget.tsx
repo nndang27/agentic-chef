@@ -123,7 +123,7 @@ const handleTextInput = (field: string, text: string) => {
       };
     });
   };
-  const isFormValid = (formData?.originId === null && formData?.destinationId === null) || (formData?.originId && formData?.destination === "") || (formData?.origin === "" && formData?.destinationId);
+  const isFormValid = (formData?.originId && formData?.destinationId) || (formData?.originId === null && formData?.destinationId === null) || (formData?.originId && formData?.destination === null) || (formData?.origin === null && formData?.destinationId) || (formData?.origin === "" && formData?.destinationId) || (formData?.originId && formData?.destination === "");
   // --- 2. HÀM XỬ LÝ KHI NGƯỜI DÙNG NHẬP LIỆU ---
   const handleInputChange = (field: string, value: string) => {
       setFormData((prev) => {

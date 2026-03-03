@@ -79,6 +79,9 @@ function minDistanceToPolyline(point: {lat: number, lng: number}, polyline: {lat
 
 export async function getNearestSupermarket(currentUserLocation: {latitude: number, longitude: number}, originId: string, destinationId: string, SUPERMARKET_NAME: string) {
 
+    console.log("originId", originId);
+    console.log("destinationId", destinationId);
+    console.log("currentUserLocation: ", currentUserLocation);
     if (originId  && destinationId === null) {
         const { latitude, longitude } = await getLatLongFromID(originId);
         const nearestSupermarket = await getSupermarketByRadius(latitude, longitude, 2000, SUPERMARKET_NAME);
@@ -98,8 +101,8 @@ export async function getNearestSupermarket(currentUserLocation: {latitude: numb
             : { 
                 location: {
                     latLng: {
-                        latitude: currentUserLocation.lat,
-                        longitude: currentUserLocation.lng
+                        latitude: currentUserLocation.latitude,
+                        longitude: currentUserLocation.longitude
                     }
                 }
             },

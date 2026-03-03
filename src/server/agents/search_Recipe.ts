@@ -60,7 +60,9 @@ const RecipeSchema = z.object({
 
 
 const createColesUrl = (query:string) => {
-  const baseUrl = "https://www.coles.com.au/search/recipes?q=";
+  // const baseUrl = "https://www.coles.com.au/search/recipes?q="; // COLES
+
+  const baseUrl = "https://www.taste.com.au/search-recipes/?q="; // TASTE
   
   const slug = query
     .toLowerCase()                          // 1. Chuyển tất cả sang chữ thường

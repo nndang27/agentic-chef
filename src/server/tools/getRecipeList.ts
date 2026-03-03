@@ -6,37 +6,31 @@ import { Document } from "@langchain/core/documents";
 interface ColesRecipe {
   name: string;
   image_url: string;
-  cook_time: string;
   recipe_url: string;
 }
+
+
+  
+  
+
 
 export function parseRecipeList(markdownData: string): ColesRecipe[] {
   const results: ColesRecipe[] = [];
 
-  // --- GIẢI THÍCH REGEX ---
-  // 1. \[!\[Image \d+: ([^\]]+)\]   -> Tìm thẻ ảnh, bắt lấy Tên (Group 1) trong alt text
-  // 2. \(([^)]+)\)                  -> Bắt lấy Link ảnh (Group 2)
-  // 3. \s###\s                      -> Bỏ qua đoạn phân cách " ### "
-  // 4. .*?                          -> Bỏ qua tên món bị lặp lại ở giữa
-  // 5. (\d+(?: hr)?(?: \d+)? min.*?) -> Bắt lấy Thời gian (Group 3) - Logic: Số + (hr/min)
-  // 6. \]                           -> Dấu đóng ngoặc vuông của link markdown
-  // 7. \(([^)]+)\)                  -> Bắt lấy Link công thức (Group 4)
-  
-  const regex = /\[!\[Image \d+: ([^\]]+)\]\(([^)]+)\) ### .*? (\d+(?: hr)?(?: \d+)? min.*?)\]\(([^)]+)\)/g;
+  // const regex = /\[!\[Image \d+: ([^\]]+)\]\(([^)]+)\) ### .*? (\d+(?: hr)?(?: \d+)? min.*?)\]\(([^)]+)\)/g; // COLES
+  const regex = /\[!\[Image \d+: ([^\]]+)\]\(([^)]+)\)\]\(([^)]+)\)/g;
 
   let match;
   while ((match = regex.exec(markdownData)) !== null) {
     results.push({
       name: match[1].trim(),       // Tên món
-      image_url: match[2].trim(),  // Link ảnh gốc (Next.js optimized)
-      cook_time: match[3].trim(),  // Thời gian
-      recipe_url: match[4].trim()  // Link công thức
+      image_url: match[2].trim(),  // Link ảnh
+      recipe_url: match[3].trim()  // Link bài viết
     });
   }
 
   return results;
 }
-
 // ========== Reranking meals ==========
 const ItemAnalysisSchema = z.object({
   id: z.number().describe("The exact index from the input list []."),
@@ -184,36 +178,22 @@ export async function getColesRecipeList(userQuery: string, url: string): Promis
   try {
 
 
-    const targetSelectors=".coles-targeting-themegridRow";
+    // const targetSelectors=".coles-targeting-themegridRow";//COLES
 
+    const targetSelectors = [".card-grid"] 
     const response = await axios.get(`https://r.jina.ai/${url}`, {
         headers: {
             'X-Return-Format': 'markdown', 
-            
-            // // 2. Target vào danh sách trên
+            // Target vào lưới chứa recipe
             'X-Target-Selector': targetSelectors,
-            
-            // // 3. Quan trọng: Chờ thằng Ingredients hiện ra rồi mới cào (vì Coles load chậm)
-            // 'X-WaitForSelector': '.coles-targeting-RecipeIngredientsCategoryList',
-            
-            // // 4. Xóa rác: Nút mua hàng, icon, phần tử ẩn
-            // 'X-Remove-Selector': 'button, [class*="ShopButton"], .sr-only, svg, [role="button"]',
-            
-            // 'X-Retain-Images': 'none', 
-            // 'X-With-Links-Summary': 'false'
+            // Thêm options này để Jina cố gắng đợi trang load (quan trọng với Woolies)
+            'X-WaitForSelector': targetSelectors, 
         }
     });
 
-    // if (!response.data || response.data.trim().length === 0) {
-    //     console.warn("⚠️ Jina trả về rỗng.");
-    //     return "";
-    // }
-
+    console.log("response.data: ", response.data);
     const recipes = parseRecipeList(response.data);
-
-    // // console.log("================================================================");
-    // const sorted = await smartRerankWithOllama(`${userQuery} recipe`, recipes);
-    // console.log("sorted: ", sorted);
+    console.log("recipes: ", recipes);
     return recipes;
 
   } catch (error: any) {
