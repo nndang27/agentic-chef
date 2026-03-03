@@ -10,7 +10,7 @@ export const searchMapNode = async (state: typeof AgentState.State, config: any)
     let destinationID = null;
     let current_origin_address = null;
     let current_destination_address = null;
-    let brand_preference = null;
+    let brand_preference = "Coles Woolworths Aldi";
     let originLocation = null;
     let destinationLocation = null;
     console.log("**********************************************************************\n");
@@ -18,6 +18,30 @@ export const searchMapNode = async (state: typeof AgentState.State, config: any)
     // console.log("state.current_origin_address: ", state.current_origin_address);
     // console.log("state.current_destination_address: ", state.current_destination_address);
     // console.log("userCurrentLocation: ", userCurrentLocation);
+    if(state.quickMode.length > 0){
+        if(state.quickMode.includes("MAP")){
+            if(state.quickQuery.mapOrigin !== ""){
+                state.current_origin_address = {
+                    adressName: state.quickQuery.mapOrigin,
+                    adressID: null,
+                    location: null
+                };
+
+            }
+            if(state.quickQuery.mapDestination !== ""){
+                state.current_destination_address = {
+                    adressName: state.quickQuery.mapDestination,
+                    adressID: null,
+                    location: null
+                };
+            }
+            if(state.quickQuery.mapSupermarket !== ""){
+                state.brand_preference = state.quickQuery.mapSupermarket;
+            }
+        }
+    }
+
+
     if(state.current_origin_address.adressName){
         if(state.current_origin_address.adressName!=='user_location'){
             current_origin_address = await autoCompleteAddress(state.current_origin_address.adressName);
@@ -41,11 +65,32 @@ export const searchMapNode = async (state: typeof AgentState.State, config: any)
         }
     }
 
-    if(state.brand_preference){
-        if(state.brand_preference.includes("Any")){
+
+    if (state.brand_preference) {
+        // 1. Chuyển chuỗi về chữ thường để dễ so sánh
+        const prefText = state.brand_preference.toLowerCase();
+
+        // 2. Đặt các cờ (flags) kiểm tra
+        const hasAny = prefText.includes("any");
+        const hasColes = prefText.includes("coles");
+        const hasWoolworths = prefText.includes("woolworth"); // Tìm "woolworth" sẽ bắt được cả "woolworths"
+
+        // 3. Xử lý logic theo thứ tự ưu tiên
+        if (hasAny) {
             brand_preference = "Coles Woolworths Aldi";
-        }else{
-            brand_preference = state.brand_preference;
+        } 
+        else if (hasColes && hasWoolworths) {
+            brand_preference = "Coles Woolworths";
+        } 
+        else if (hasColes) {
+            brand_preference = "Coles";
+        } 
+        else if (hasWoolworths) {
+            brand_preference = "Woolworths";
+        } 
+        else {
+            // Trường hợp không có chữ nào liên quan đến Coles, Woolworths hay Any
+            brand_preference = "Coles Woolworths Aldi";
         }
     }
     // console.log("originID: ", originID);

@@ -83,12 +83,33 @@ export const uploadAllVideos = async (validResults: any[]) => {
 export const tiktokAgentNode = async (state: typeof AgentState.State) => {
     console.log("**********************************************************************\n");
     console.time("⏱️ SEARCH VIDEO running TIME:");
-    
-  // const messages = state.messages;
-  // const lastMessage = messages[messages.length - 1];
-  // const userQuery = lastMessage.content.toString();
+  
+  //Check mode:
+  let userQuery ="";
+  if(state.quickMode.length > 0){
+    if(state.quickMode.includes("VIDEO")){
+      if(state.quickQuery.videoDish !== ""){
+        state.current_dish_video = state.quickQuery.videoDish;
+        userQuery = state.quickQuery.videoDish;
+      }
+      else if(state.quickQuery.videoDish === "" && state.quickQuery.recipeDish !== ""){
+        state.current_dish_video = state.quickQuery.recipeDish;
+        userQuery = state.quickQuery.recipeDish;
+      }
+    }
+  }
+  else{
+    userQuery = state.current_dish_video;
+  }
 
-  let userQuery = state.current_dish_video;
+// ---------- Check user query ------------------
+  if (userQuery === "") {
+    return {
+      finished_branches: ["search_video_done"],
+      videoUrl: null
+    };
+  }
+  // --------------------------------------------
 
   // --- BƯỚC 0: CHECK CACHE ------------------
   // const cachedData = await SemanticCache.checkCache(userQuery);
@@ -111,7 +132,6 @@ export const tiktokAgentNode = async (state: typeof AgentState.State) => {
   // }
   // =====================================================================
   const searchResultJson = await searchTikTok(userQuery);
-  console.log(99);
   const videos_data = searchResultJson
     .sort((a: any, b: any) => (b.stats.likeCount || 0) - (a.stats.likeCount || 0))
     .slice(0, 10)
@@ -164,10 +184,16 @@ export const tiktokAgentNode = async (state: typeof AgentState.State) => {
   console.log(analysisResult.analyses)
   // BƯỚC 3: Filter (Lấy danh sách các video > 7 điểm)
   // Logic: Lấy hết tất cả video thỏa mãn điều kiện
-  const goodVideos = analysisResult.analyses.filter(v => v.isRecipe);
+  let goodVideos = analysisResult.analyses.filter(v => v.isRecipe);
 
   if (goodVideos.length === 0) {
-    return { messages: [new HumanMessage("Không có video nào là recipe")] };
+    goodVideos = videos_data.slice(0, 5).map((v: any) => ({
+      index: v.index,
+      isRecipe: true // Gán tạm true để pass qua logic
+    }));
+  }
+  else {
+    console.log(`✅ Tìm thấy ${goodVideos.length} video hợp lệ.`);
   }
 
   console.log(`Tìm thấy ${goodVideos.length} video . Đang tải xuống đồng thời...`);
@@ -198,11 +224,6 @@ export const tiktokAgentNode = async (state: typeof AgentState.State) => {
   // Lọc bỏ các cái bị null (lỗi tải)
   const validResults = results.filter(r => r && r.path != null);
 
-  // // Format kết quả trả về cho User
-  // const resultMessage = successResults
-  //   .map((r, index) => `${index + 1}. ${r.url} - Đã lưu tại: ${r.path}`)
-  //   .join("\n");
-
   console.log("validResults: \n", validResults);
   console.timeEnd("⏱️ SEARCH VIDEO running TIME:");
   console.log("**********************************************************************\n");
@@ -215,7 +236,5 @@ export const tiktokAgentNode = async (state: typeof AgentState.State) => {
       url: validResults.map(r => r?.url),
       path: finalUrls
     }
-
   };
-  //  return { messages: [new HumanMessage("Đã tải xong video")] };
 };

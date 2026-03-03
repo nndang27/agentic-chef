@@ -157,9 +157,24 @@ workflow.addNode("general_chat", generalChatNode);
 workflow.addConditionalEdges(
   START,
   (state) => {
+
+    if (state.quickMode.length >0) {
+      console.log("⚡ QUICK MODE TRIGGERED:", state.quickMode);
+      console.log("⚡ QUICK QUERY:", state.quickQuery);
+      const PRIORITY_ORDER = ["VIDEO", "MAP", "RECIPE", "PRICE"];
+
+      // Duyệt qua mảng ưu tiên để tìm xem user có chọn mode đó không
+      for (const mode of PRIORITY_ORDER) {
+        // Nếu mảng quickMode từ frontend gửi lên có chứa mode này
+        if (state.quickMode.includes(mode)) {
+          // Trả về tên node tương ứng (vd: "search_video", "search_map")
+          return `search_${mode.toLowerCase()}`;
+        }
+      }
+    }
     // Nếu bật Memory Mode -> Vào luồng Memory
     
-    if (state.isMemoryMode) {
+    else if (state.isMemoryMode) {
       return "load_update_memory";
     }
 
@@ -167,6 +182,10 @@ workflow.addConditionalEdges(
     return "orchestrator";
   },
   {
+    search_video: "search_video",
+    search_map: "search_map",
+    search_recipe: "search_recipe",
+    search_price: "search_price",
     load_update_memory: "load_update_memory",
     orchestrator: "orchestrator"
   }
@@ -216,6 +235,19 @@ workflow.addConditionalEdges(
 workflow.addConditionalEdges(
   "search_video",
   (state) => {
+    if(state.quickMode.length > 0){
+      const PRIORITY_ORDER = ["MAP", "RECIPE", "PRICE"];
+
+      // Duyệt qua mảng ưu tiên để tìm xem user có chọn mode đó không
+      for (const mode of PRIORITY_ORDER) {
+        // Nếu mảng quickMode từ frontend gửi lên có chứa mode này
+        if (state.quickMode.includes(mode)) {
+          // Trả về tên node tương ứng (vd: "search_video", "search_map")
+          return `search_${mode.toLowerCase()}`;
+        }
+      }
+    }
+
     const actions = state.next_active_agents;
     
     // Video xong thì xem có Map không?
@@ -239,6 +271,20 @@ workflow.addConditionalEdges(
 workflow.addConditionalEdges(
   "search_map",
   (state) => {
+
+    if(state.quickMode.length > 0){
+      const PRIORITY_ORDER = ["RECIPE", "PRICE"];
+
+      // Duyệt qua mảng ưu tiên để tìm xem user có chọn mode đó không
+      for (const mode of PRIORITY_ORDER) {
+        // Nếu mảng quickMode từ frontend gửi lên có chứa mode này
+        if (state.quickMode.includes(mode)) {
+          // Trả về tên node tương ứng (vd: "search_video", "search_map")
+          return `search_${mode.toLowerCase()}`;
+        }
+      }
+    }
+
     const actions = state.next_active_agents;
     
     if (hasAction(actions, "SEARCH_RECIPE")) return "search_recipe";
@@ -256,6 +302,20 @@ workflow.addConditionalEdges(
 workflow.addConditionalEdges(
   "search_recipe",
   (state) => {
+
+    if(state.quickMode.length > 0){
+      const PRIORITY_ORDER = ["PRICE"];
+
+      // Duyệt qua mảng ưu tiên để tìm xem user có chọn mode đó không
+      for (const mode of PRIORITY_ORDER) {
+        // Nếu mảng quickMode từ frontend gửi lên có chứa mode này
+        if (state.quickMode.includes(mode)) {
+          // Trả về tên node tương ứng (vd: "search_video", "search_map")
+          return `search_${mode.toLowerCase()}`;
+        }
+      }
+    }
+
     const actions = state.next_active_agents;
     
     // Recipe xong bắt buộc check Price (Dependency quan trọng)

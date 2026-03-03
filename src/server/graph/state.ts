@@ -47,6 +47,12 @@ interface Step {
   time_minutes: number | null;
 }
 
+export interface AddressData {
+  adressName: string;
+  adressID: string | null;
+  location: { lat: number; lng: number } | null; // Hoặc kiểu dữ liệu bạn đang dùng
+}
+
 export interface RecipeData {
   id: number;
   title: string; // Thêm title để hiển thị
@@ -65,6 +71,15 @@ export interface VideoGroupResult {
   url: (string | undefined)[]; // URL gốc của video (TikTok/Youtube...), có thể undefined nếu map lỗi
   path: string[];          // URL video đã upload lên Cloudinary (Final URLs)
 }
+
+export interface quickDataType {
+    recipeDish: string | "",
+    videoDish: string | "",
+    priceIngredients: string | "",
+    mapOrigin: string | "",
+    mapDestination: string | "",
+    mapSupermarket: string | ""
+  }
 
 // ------------------------------------------
 // Kế thừa MessagesAnnotation để có sẵn lịch sử chat (messages)
@@ -110,9 +125,13 @@ export const AgentState = Annotation.Root({
     reducer: (x, y) => y,
     default: () => "",
   }),
-  current_origin_address: Annotation<string>({
-    reducer: (x, y) => y,
-    default: () => "",
+  current_origin_address: Annotation<AddressData>({
+    reducer: (x, y) => y, // Ghi đè toàn bộ object mới
+    default: () => ({
+      adressName: "",
+      adressID: null,
+      location: null
+    }),
   }),
   general_chat_type: Annotation<string>({
     reducer: (x, y) => y,
@@ -122,9 +141,13 @@ export const AgentState = Annotation.Root({
     reducer: (x, y) => y,
     default: () => "",
   }),
-  current_destination_address: Annotation<string>({
+  current_destination_address: Annotation<AddressData>({
     reducer: (x, y) => y,
-    default: () => "",
+    default: () => ({
+      adressName: "",
+      adressID: null,
+      location: null
+    }),
   }),
 
   brand_preference: Annotation<string>({
@@ -178,6 +201,15 @@ ingredientPriceList: Annotation<RecipePriceData[]>({
   }),
 
   videoUrl: Annotation<VideoGroupResult>({
+    reducer: (current, next) => next,
+    default: () => null,
+  }),
+  quickMode: Annotation<string[]>({
+    reducer: (current, next) => next,
+    default: () => [],
+  }),
+
+  quickQuery: Annotation<quickDataType>({
     reducer: (current, next) => next,
     default: () => null,
   }),

@@ -53,8 +53,14 @@ export const generalChatNode = async (state: typeof AgentState.State, config: an
     // 3. Thu thập Context từ các Agent đã chạy
     // Chúng ta tạo một object chứa kết quả để nạp vào prompt
     const executionContext: any = {};
-    const activeAgents = state.next_active_agents || []; // List các agent đã chạy, vd: ["SEARCH_RECIPE", "SEARCH_PRICE"]
+    let activeAgents = state.next_active_agents || []; // List các agent đã chạy, vd: ["SEARCH_RECIPE", "SEARCH_PRICE"]
 
+    if(state.quickMode.length >1){
+        const PRIORITY_ORDER = ["VIDEO", "MAP", "RECIPE", "PRICE"];
+        activeAgents = PRIORITY_ORDER
+            .filter(mode => state.quickMode.includes(mode)) 
+            .map(mode => `SEARCH_${mode}`);
+    }
     console.log("🔍 Collecting context from agents:", activeAgents);
 
     // --- CASE: SEARCH_RECIPE ---

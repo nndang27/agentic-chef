@@ -278,47 +278,95 @@ export const searchPriceAgentNode = async (state: typeof AgentState.State, confi
     console.log("**********************************************************************");
     console.time("⏱️ SEARCH PRICE running TIME:");
     let recipesList: RecipeData[] = [];
-    
+    // ============= CHECK QUICK MODE =========================
+    if(state.quickMode.length > 0){
+        if(state.quickMode.includes("PRICE")){
+            if(state.quickQuery.priceIngredients !== ""){
+                const split_ingredients = state.quickQuery.priceIngredients.split(',').map(item => item.trim());
+                state.cached_ingredients = split_ingredients;
+                recipesList = split_ingredients.map((ingredientName, index) => {
+                return {
+                  id: index + 100000, // Tạo ID giả để không trùng lặp
+                  title: ingredientName, // Dùng tên nguyên liệu làm tiêu đề để hiển thị
+                  image: "", // Không có ảnh
+                  serves: [],
+                  cook_time: [],
+                  prep_time: null,
+                  
+                  // Quan trọng: Gán string vào item của Ingredient
+                  ingredients: [
+                    {
+                      item: ingredientName,
+                      amount: null, 
+                      notes: null
+                    }
+                  ],
+                  
+                  steps: [], // Không có bước nấu
+                  nutrition_estimate: {},
+                  chef_tips: ""
+                } as RecipeData;
+              });
 
-    if (state.cached_ingredients.includes("depend_on_recipe")) {
-      // TRƯỜNG HỢP 1: Lấy danh sách recipe đã có sẵn
-      recipesList = state.recipesList;
-      if(recipesList.length===0){
-        return {
-          finished_branches: ["search_price_done"],
-          ingredientPriceList: []
-        };
-      }
-    } else {
-      // TRƯỜNG HỢP 2: Tạo RecipeData giả từ danh sách string nguyên liệu
-      // Ví dụ: state.cached_ingredients = ["onion", "garlic", "beef"]
-      
-      recipesList = state.cached_ingredients.map((ingredientName, index) => {
-        return {
-          id: index + 100000, // Tạo ID giả để không trùng lặp
-          title: ingredientName, // Dùng tên nguyên liệu làm tiêu đề để hiển thị
-          image: "", // Không có ảnh
-          serves: [],
-          cook_time: [],
-          prep_time: null,
-          
-          // Quan trọng: Gán string vào item của Ingredient
-          ingredients: [
-            {
-              item: ingredientName,
-              amount: null, 
-              notes: null
             }
-          ],
-          
-          steps: [], // Không có bước nấu
-          nutrition_estimate: {},
-          chef_tips: ""
-        } as RecipeData;
-      });
-      console.log("recipesList for each ingredient: \n", JSON.stringify(recipesList, null, 2));
+            else if(state.quickQuery.priceIngredients === "" && state.quickQuery.recipeDish !==""){
+              recipesList = state.recipesList;
+              if(recipesList.length===0){
+                return {
+                  finished_branches: ["search_price_done"],
+                  ingredientPriceList: []
+                };
+              }
+            }
+            else{
+              return {
+                  finished_branches: ["search_price_done"],
+                  ingredientPriceList: []
+                };
+            }
+        }
     }
-
+    // ============= NOT QUICK MODE READ FROM ORCHESTRATOR =========================
+    else{
+      if (state.cached_ingredients.includes("depend_on_recipe")) {
+        // TRƯỜNG HỢP 1: Lấy danh sách recipe đã có sẵn
+        recipesList = state.recipesList;
+        if(recipesList.length===0){
+          return {
+            finished_branches: ["search_price_done"],
+            ingredientPriceList: []
+          };
+        }
+      } else {
+        // TRƯỜNG HỢP 2: Tạo RecipeData giả từ danh sách string nguyên liệu
+        // Ví dụ: state.cached_ingredients = ["onion", "garlic", "beef"]
+        
+        recipesList = state.cached_ingredients.map((ingredientName, index) => {
+          return {
+            id: index + 100000, // Tạo ID giả để không trùng lặp
+            title: ingredientName, // Dùng tên nguyên liệu làm tiêu đề để hiển thị
+            image: "", // Không có ảnh
+            serves: [],
+            cook_time: [],
+            prep_time: null,
+            
+            // Quan trọng: Gán string vào item của Ingredient
+            ingredients: [
+              {
+                item: ingredientName,
+                amount: null, 
+                notes: null
+              }
+            ],
+            
+            steps: [], // Không có bước nấu
+            nutrition_estimate: {},
+            chef_tips: ""
+          } as RecipeData;
+        });
+        console.log("recipesList for each ingredient: \n", JSON.stringify(recipesList, null, 2));
+      }
+  }
     const recipesListWithPrice: RecipePriceData[] = [];
     for (const recipe of recipesList) {
         const itemNames = recipe.ingredients

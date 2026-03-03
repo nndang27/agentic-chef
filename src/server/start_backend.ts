@@ -7,6 +7,7 @@ import { initGraphDB } from "./agents/semantic_Collection"; // Uncomment nếu c
 import { initRedisIndex } from "./lib/redis"; // Uncomment nếu cần
 import { createClerkClient } from "@clerk/backend";
 import { verifyToken } from "@clerk/backend";
+import {type quickDataType} from "./graph/state"
 // Cấu hình Port
 const PORT = process.env.NEXT_PUBLIC_BACKEND_PORT || 3000;
 
@@ -76,7 +77,7 @@ io.use(async (socket, next) => {
       }
     };
 
-    socket.on("chat_message", async (payload: { msg: string, userCurrentLocation: any, isMemoryMode:boolean }) => {
+    socket.on("chat_message", async (payload: { msg: string, userCurrentLocation: any, isMemoryMode:boolean , quickMode?: string[], quickQuery?: quickDataType}) => {
       if (activeControllers.has(socket.id)) {
         activeControllers.get(socket.id)?.abort();
         activeControllers.delete(socket.id);
@@ -87,13 +88,15 @@ io.use(async (socket, next) => {
       activeControllers.set(socket.id, controller); // Lưu lại
       
       try {
-        const { msg, userCurrentLocation, isMemoryMode } = payload;
+        const { msg, userCurrentLocation, isMemoryMode, quickMode, quickQuery } = payload;
         console.log(`📩 Received: ${msg}`);
 
         // Input cho LangGraph
         const inputs = {
           messages: [new HumanMessage(msg)],
           isMemoryMode: isMemoryMode || false,
+          quickMode: quickMode || [],
+          quickQuery: quickQuery || null,
         };
 
         config.configurable.user_current_location = userCurrentLocation;
@@ -135,6 +138,14 @@ io.use(async (socket, next) => {
                     const optimized_route_map = data.output.optimized_route_map;
 
                     if(optimized_route_map===null){
+                      const result_map = {
+                          optimized_route_map: null,
+                          current_origin_address: null,
+                          current_destination_address: null,
+                          brand_preference: null,
+                          user_current_location: null,
+                      }
+                      socket.emit("map_result", result_map);
                       socket.emit("stream_chunk", "❌ Search map failed, please remember turn on your location\n");
                     }else{
                       const result_map = {
@@ -150,15 +161,24 @@ io.use(async (socket, next) => {
                     isMapSent = true;
                 }
                 if (!isVideoSent && finished_brances.includes("search_video_done")){
-                  const videoUrl = data.output.videoUrl;
+                  const videoUrl = data?.output?.videoUrl;
                   // console.log("videoUrl: ", videoUrl);
-                  socket.emit("video_result", videoUrl);
-                  socket.emit("stream_chunk", "✅ Search video done\n");
+                  console.log("=======22222222222222");
+                  console.log("videoUrl: ", videoUrl);
+                  if(videoUrl){
+                    
+                    socket.emit("video_result", videoUrl);
+                    socket.emit("stream_chunk", "✅ Search video done\n");
+                  }else{
+                    socket.emit("video_result", null);
+                    socket.emit("stream_chunk", "❌ Search video failed, please try again\n");
+                  }
                   isVideoSent = true;
                 }
                 if (!isRecipeSent && finished_brances.includes("search_recipe_done")){
                     const recipesList = data.output.recipesList;
                     if(recipesList.length===0){
+                      socket.emit("recipe_result", []);
                       socket.emit("stream_chunk", "❌ Search recipe failed, please try again\n");
                     }else{
                       socket.emit("recipe_result", recipesList);
@@ -166,13 +186,11 @@ io.use(async (socket, next) => {
                     }
                     isRecipeSent = true;
                 }
-                if (finished_brances.includes("general_chat_done")){
-                  isChat = 0;
 
-                }
                 if (!isPriceSent && finished_brances.includes("search_price_done")){
                     const ingredientPriceList = data.output.ingredientPriceList;
                     if (ingredientPriceList.length===0){
+                      socket.emit("ingredient_price_result", []);
                       socket.emit("stream_chunk", "❌ Search ingredient price failed, please try again\n");
                     }else{
                       socket.emit("ingredient_price_result", ingredientPriceList);
@@ -180,6 +198,13 @@ io.use(async (socket, next) => {
                     }
                     isPriceSent = true;
                 }
+
+                if (finished_brances.includes("general_chat_done")){
+                  isChat = 0;
+
+                }
+
+                
             }
             // 2. Bắt sự kiện Token Stream (như cũ)
             if (event === "on_chat_model_stream" && data.chunk?.content && isChat === 1) {

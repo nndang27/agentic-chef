@@ -77,9 +77,28 @@ const createColesUrl = (query:string) => {
 
 // export const recipeAgentNode = async () => {
 export const recipeAgentNode = async (state: typeof AgentState.State, config: any) => {
-  let userQuery = [state.current_dish];
-    console.log("**********************************************************************\n");
-    console.time("⏱️ SEARCH RECIPE running TIME:");
+  let userQuery = [""];
+  if(state.quickMode.length > 0){
+      if(state.quickMode.includes("RECIPE")){
+          if(state.quickQuery.recipeDish !== ""){
+              state.current_dish = state.quickQuery.recipeDish;
+              userQuery = [state.quickQuery.recipeDish];
+          }
+      }
+  }
+  else{
+    userQuery = [state.current_dish];
+  }
+
+  console.log("**********************************************************************\n");
+  console.time("⏱️ SEARCH RECIPE running TIME:");
+  if(userQuery[0] === ""){
+    return {
+      finished_branches: ["search_recipe_done"],
+      recipesList: []
+    };
+  }
+  // --------------------------------------------------------------------------------
   
   let fullContent = "";
   let sourceUrl = "";
