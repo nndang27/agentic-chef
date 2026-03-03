@@ -157,8 +157,8 @@ export const generalChatNode = async (state: typeof AgentState.State, config: an
 
     console.log("==========================================");
     console.log("📝 GENERATING FINAL RESPONSE...");
-    // console.log("System Prompt Preview:", systemPrompt); // Uncomment to debug prompt
-    console.log("==========================================");
+    // console.log("System Prompt Preview:", systemPrompt);
+    // console.log("==========================================");
   
 
     // 5. Gọi LLM
@@ -166,7 +166,7 @@ export const generalChatNode = async (state: typeof AgentState.State, config: an
         new SystemMessage(systemPrompt),
         new HumanMessage(userPrompt) // Dùng tin nhắn gốc của user để LLM biết ngữ cảnh hỏi
     ];
-
+    console.log("inputs: ", inputs);
     const response = await llm_chatbot.invoke(inputs);
 
     console.log("🤖 CHAT BOT RESPONSE:", response.content);
