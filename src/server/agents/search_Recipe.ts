@@ -94,8 +94,9 @@ export const recipeAgentNode = async (state: typeof AgentState.State, config: an
         const bestRecipeLink = recipeList[0]?.recipe_url;
         const content_scraped = await GetColesRecipeDetail(bestRecipeLink);
         // Kiểm tra sơ bộ xem content có đủ dài không (tránh trang lỗi)
+        console.log("content_scraped: ", content_scraped);
         const parsed = parseRecipeStructured(content_scraped);
-
+        console.log("parsed: ", parsed);
         if (content_scraped.length > 100) { 
 
             sourceUrl = ColesUrl;

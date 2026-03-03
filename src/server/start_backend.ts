@@ -158,11 +158,12 @@ io.use(async (socket, next) => {
                 }
                 if (!isRecipeSent && finished_brances.includes("search_recipe_done")){
                     const recipesList = data.output.recipesList;
-                    // console.log("***********************");
-                    // console.log("recipesList: ", recipesList);
-                    // console.log("***********************");
-                    socket.emit("recipe_result", recipesList);
-                    socket.emit("stream_chunk", "✅ Search recipe done\n");
+                    if(recipesList.length===0){
+                      socket.emit("stream_chunk", "❌ Search recipe failed, please try again\n");
+                    }else{
+                      socket.emit("recipe_result", recipesList);
+                      socket.emit("stream_chunk", "✅ Search recipe done\n");
+                    }
                     isRecipeSent = true;
                 }
                 if (finished_brances.includes("general_chat_done")){
@@ -171,8 +172,12 @@ io.use(async (socket, next) => {
                 }
                 if (!isPriceSent && finished_brances.includes("search_price_done")){
                     const ingredientPriceList = data.output.ingredientPriceList;
-                    socket.emit("ingredient_price_result", ingredientPriceList);
-                    socket.emit("stream_chunk", "✅ Search ingredient price done\n");
+                    if (ingredientPriceList.length===0){
+                      socket.emit("stream_chunk", "❌ Search ingredient price failed, please try again\n");
+                    }else{
+                      socket.emit("ingredient_price_result", ingredientPriceList);
+                      socket.emit("stream_chunk", "✅ Search ingredient price done\n");
+                    }
                     isPriceSent = true;
                 }
             }

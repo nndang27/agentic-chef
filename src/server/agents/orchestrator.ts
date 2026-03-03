@@ -72,6 +72,8 @@ Your objective is to analyze User Input + Chat History + (Optional) Long-term Co
 #### GROUP 1: SINGLE_INTENT (Clear & Direct)
 - **Definition**: User asks for ONE specific task with clear entities.
 - **Examples**: 
+  - "chicken" -> SEARCH_RECIPE.
+  - "salad" -> SEARCH_RECIPE.
   - "How to make Pho?" -> SEARCH_RECIPE.
   - "Price of 1kg beef" -> SEARCH_PRICE (direct).
   - "Where is the nearest Coles?" -> SEARCH_MAP.
@@ -131,6 +133,26 @@ Your objective is to analyze User Input + Chat History + (Optional) Long-term Co
 
 ### FEW-SHOT EXAMPLES (Study these carefully):
 
+**Input**: "chicken"
+**Output**:
+{
+  "classification_group": "SINGLE_INTENT",
+  "reasoning": "User provided a bare food noun. Defaulting to recipe search.",
+  "intents": [
+    { "intent": "SEARCH_RECIPE", "dish_name": "chicken" }
+  ]
+}
+
+**Input**: "spring rolls"
+**Output**:
+{
+  "classification_group": "SINGLE_INTENT",
+  "reasoning": "User provided a bare food noun. Defaulting to recipe search.",
+  "intents": [
+    { "intent": "SEARCH_RECIPE", "dish_name": "spring rolls" }
+  ]
+}
+
 **Input**: "The weather is nice, what should I eat?"
 **Output**:
 {
@@ -168,6 +190,51 @@ Your objective is to analyze User Input + Chat History + (Optional) Long-term Co
   "reasoning": "User says 'it'. Context implies 'Pho'. Resolving 'it' to 'Pho'.",
   "intents": [
     { "intent": "SEARCH_VIDEO", "dish_name": "Pho" }
+  ]
+}
+
+
+**History**: [User: "I want to cook chicken today.", Bot: "Great choice! Here are some delicious chicken recipes..."]
+**Input**: "find me the video"
+**Output**:
+{
+  "classification_group": "CONTEXTUAL",
+  "reasoning": "User asks for a video without naming the dish. Chat history clearly discusses 'chicken'. Resolving implicit entity to 'chicken'.",
+  "intents": [
+    { "intent": "SEARCH_VIDEO", "dish_name": "chicken" }
+  ]
+}
+
+**History**: [User: "That's nice weather today.", Bot: "Yes, it's a beautiful day! How can I help you?"]
+**Input**: "find me the video"
+**Output**:
+{
+  "classification_group": "VAGUE_GENERAL",
+  "reasoning": "User wants a video, but there is NO dish recommended or mentioned in the recent chat history. Cannot perform SEARCH_VIDEO without a valid dish_name.",
+  "intents": [
+    { "intent": "GENERAL_CHAT", "type": "clarification", "response_guideline": "Politely tell the user that no dish was discussed previously and ask what they would like to watch." }
+  ]
+}
+
+**History**: [User: "Hi, who are you?", Bot: "Hello! I am your intelligent Cooking Assistant. What are you craving today?"]
+**Input**: "salad"
+**Output**:
+{
+  "classification_group": "SINGLE_INTENT",
+  "reasoning": "User provided a bare food noun ('salad') with no other verbs. Defaulting directly to recipe search for this specific item.",
+  "intents": [
+    { "intent": "SEARCH_RECIPE", "dish_name": "salad" }
+  ]
+}
+
+**History**: [User: "How to make Beef Wellington?", Bot: "Here is the recipe for Beef Wellington. You will need beef tenderloin, puff pastry, mushrooms..."]
+**Input**: "how much does it cost?"
+**Output**:
+{
+  "classification_group": "CONTEXTUAL",
+  "reasoning": "User asks for a price ('it') based on the previous recipe. Context implies 'Beef Wellington'.",
+  "intents": [
+    { "intent": "SEARCH_PRICE", "dependency_mode": "depend_on_recipe", "dish_name": "Beef Wellington" }
   ]
 }
 `;
@@ -227,7 +294,7 @@ export const orchestratorNode = async (state: typeof AgentState.State, config: a
 
 
     try {
-        if (state.isMemoryMode) {
+        // if (state.isMemoryMode) {
 
           const messagesPayload = [
               // A. System Prompt (Luật lệ cố định)
@@ -249,9 +316,9 @@ export const orchestratorNode = async (state: typeof AgentState.State, config: a
               new HumanMessage(`CURRENT USER INPUT: "${lastUserMessage.content}"`)
           ];
           result = await router.invoke(messagesPayload);
-        } else {
-          result = await router.invoke([new SystemMessage(SYSTEM_PROMPT), new HumanMessage(`CURRENT USER INPUT: "${lastUserMessage.content}"`)]);
-        }
+        // } else {
+        //   result = await router.invoke([new SystemMessage(SYSTEM_PROMPT), new HumanMessage(`CURRENT USER INPUT: "${lastUserMessage.content}"`)]);
+        // }
         
     } catch (error) {
         console.error("Router Error:", error);

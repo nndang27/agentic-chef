@@ -283,6 +283,12 @@ export const searchPriceAgentNode = async (state: typeof AgentState.State, confi
     if (state.cached_ingredients.includes("depend_on_recipe")) {
       // TRƯỜNG HỢP 1: Lấy danh sách recipe đã có sẵn
       recipesList = state.recipesList;
+      if(recipesList.length===0){
+        return {
+          finished_branches: ["search_price_done"],
+          ingredientPriceList: []
+        };
+      }
     } else {
       // TRƯỜNG HỢP 2: Tạo RecipeData giả từ danh sách string nguyên liệu
       // Ví dụ: state.cached_ingredients = ["onion", "garlic", "beef"]
