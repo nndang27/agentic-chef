@@ -18,11 +18,11 @@ The system routes user queries through a specialized decision pipeline to ensure
 **Standard Flow:**
 ```text
 ORCHESTRATOR → SEARCH_VIDEO → SEARCH_MAP → SEARCH_RECIPE → SEARCH_PRICE → GENERAL_CHAT
-
+```
 **MemoryMode Flow**
 ```text
 LOAD_SEMANTIC_MEM → MANAGE_MEMORY → ORCHESTRATOR → SEARCH_VIDEO → SEARCH_MAP → SEARCH_RECIPE → SEARCH_PRICE → GENERAL_CHAT → SUMMARIZED_HISTORY_CHAT
-
+```
 ## 💻 Tech Stack
 
 This project is built using a modern, scalable monolith architecture with a clear separation of concerns between the client, server, and AI services.
@@ -97,17 +97,17 @@ The AI agents in Recipe Optimm are equipped with specific tools to handle variou
 
 ### 🏠 Homepage
 <p align="center">
-  <img src="home_page_demo.png" width="800" alt="Homepage Demo">
+  <img src="/public/home_page_demo.png" width="800" alt="Homepage Demo">
 </p>
 
 ### 📊 Dashboard
 <p align="center">
-  <img src="dashboard_demo.png" width="800" alt="Dashboard Demo">
+  <img src="/public/dashboard_demo.png" width="800" alt="Dashboard Demo">
 </p>
 
 ### 💰 Ingredient Price Comparison
 <p align="center">
-  <img src="ingredent_price_compare.png" width="800" alt="Price Comparison Demo">
+  <img src="/public/ingredent_price_compare.png" width="800" alt="Price Comparison Demo">
 </p>
 
 ## 🤝 Contributing
