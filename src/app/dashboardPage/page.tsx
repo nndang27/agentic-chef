@@ -30,6 +30,7 @@ import { Switch } from "../../components/ui/switch"; // Nếu dùng shadcn/ui
 import { BrainCircuit } from "lucide-react";
 // import { useUser } from "@clerk/nextjs";
 import { useAuth } from "@clerk/nextjs";
+import {type quickDataType } from "../_components/ChatInterface";
 export interface LatLng {
   lat: number;
   lng: number;
@@ -89,7 +90,7 @@ const mockVideos = {
 ],
   path: [
     "https://res.cloudinary.com/ddnrrg0hp/video/upload/v1772451950/food-agent-videos/muou3mpptvujhkjoeguh.mp4",
-    "/https://res.cloudinary.com/ddnrrg0hp/video/upload/v1772451947/food-agent-videos/jjqggtt7ddfahnfvf7od.mp4",
+    // "/https://res.cloudinary.com/ddnrrg0hp/video/upload/v1772451947/food-agent-videos/jjqggtt7ddfahnfvf7od.mp4",
     "https://res.cloudinary.com/ddnrrg0hp/video/upload/v1772451740/food-agent-videos/o2j4xkpyjczvcfrwvwzc.mp4",
     "https://res.cloudinary.com/ddnrrg0hp/video/upload/v1772451739/food-agent-videos/n7drbubbuml7d4dj4soc.mp4",
   ]
@@ -199,7 +200,7 @@ const executeSearch = async () => {
 };
 useEffect(() => {
   if (!isSocketReady) return;
-  executeSearch();
+  // executeSearch();
   const savedPrompt = localStorage.getItem("pending_prompt");
   if (savedPrompt) {
     console.log("savedPrompt: ", savedPrompt);
@@ -284,35 +285,32 @@ useEffect(() => {
     socketRef.current.on("map_result", (data) => {
       console.log("map_result: ", data);
        setIsSearchingMap(false); // Tắt loading ở Map
-       setMapDestination(data); // Cập nhật Map
+       if(!data?.optimized_route_map){
+          setMapDestination(data); // Cập nhật Map
+       }
+       
     });
     socketRef.current.on("video_result", (data) => {
-      // if(data){
-      // const fixedData = {
-      //   ...data,
-      //   path: data.path.map(p => {
-      //     if (!p) return null;
-      //     // Thay thế "../../public" bằng rỗng để đường dẫn bắt đầu bằng "/"
-      //     return p.replace('../../public', '');
-      //   })
-      // };
-      console.log("video_result: ", data);
-      setIsSearchingVideo(false); // Tắt loading ở Video
-      console.log("isSearchingVideo: ", isSearchingVideo);
-      setVideoUrl(data); // Cập nhật Video
 
-      // console.log("video_result: ", fixedData);
-      // }
+      setIsSearchingVideo(false); // Tắt loading ở Video
+      if(data){
+        setVideoUrl(data); // Cập nhật Video
+      }
+
     });
     socketRef.current.on("recipe_result", (data) => {
       setIsSearchingRecipe(false); // Tắt loading ở Recipe
-      setRecipesList(data);
-      console.log("recipe_result: ", data);
+      if(data.length >0){
+        setRecipesList(data);
+      }
+
     });
     socketRef.current.on("ingredient_price_result", (data) => {
       setIsSearchingPrice(false); // Tắt loading ở Recipe
-      setIngredientPriceList(data);
-      console.log("ingredient_price_result: ", data);
+      if(data.length >0){
+        setIngredientPriceList(data);
+      }
+
     });
     socketRef.current.on("stream_done", () => {
       setIsGenerating(false);
@@ -344,7 +342,11 @@ useEffect(() => {
   }, [getToken, userId]);
 
 
-  const handleSendMessage = async (msg: string) => {
+  const handleSendMessage = async (msg: string, quickMode?: string[], quickQuery?: quickDataType) => {
+
+    console.log("quickMode: ", quickMode);
+    console.log("quickQuery: ", quickQuery);
+
     setIsGenerating(true);
     setAgentStatus("Thinking..."); // Set trạng thái mặc định ban đầu
 
@@ -357,7 +359,13 @@ useEffect(() => {
     const location = await getCurrentLocation();
     const a = location ?{latitude: location.latitude, longitude: location.longitude} : null;
     console.log("location when hancle message: ", a);
-    socketRef.current?.emit("chat_message", {msg, userCurrentLocation:a, isMemoryMode: isMemoryMode});
+    socketRef.current?.emit("chat_message", {
+      msg, 
+      userCurrentLocation:a, 
+      isMemoryMode: isMemoryMode,
+      quickMode: quickMode || null,     // "RECIPE", "VIDEO", "PRICE", "MAP"
+      quickQuery: quickQuery || null
+    });
   };
 
 
@@ -395,11 +403,6 @@ useEffect(() => {
       // Lúc này matchingPrice có thể là object giá hoặc null
       const result = await saveRecipeToDatabase(recipeFromChild, matchingPrice);
 
-      // if (result.success) {
-      //   toast.success("Đã lưu công thức thành công!");
-      // } else {
-      //   toast.error("Lưu thất bại: " + result.error);
-      // }
     };
 
   return (

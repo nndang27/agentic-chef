@@ -155,17 +155,17 @@ export function RecipeWidget({ isSearching = true, recipesList , onSaveRecipe}: 
                 <div className="aspect-video w-full rounded-md overflow-hidden bg-slate-100 mb-2">
                    {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img 
-                    src={recipesList[hoveredDotIndex].image} 
+                    src={recipesList[hoveredDotIndex]?.image} 
                     alt="Preview" 
                     className="w-full h-full object-cover"
                   />
                 </div>
                 <p className="text-xs font-bold text-slate-700 text-center truncate">
-                  {recipesList[hoveredDotIndex].title}
+                  {recipesList[hoveredDotIndex]?.title}
                 </p>
                 <div className="flex justify-center gap-2 mt-1 text-[10px] text-slate-500">
-                    <span className="flex items-center gap-0.5"><Clock className="w-3 h-3"/> {recipesList[hoveredDotIndex].cook_time[0].value}m</span>
-                    <span className="flex items-center gap-0.5"><Users className="w-3 h-3"/> {recipesList[hoveredDotIndex].serves[0].value}</span>
+                    <span className="flex items-center gap-0.5"><Clock className="w-3 h-3"/> {recipesList[hoveredDotIndex]?.cook_time[0]?.value}m</span>
+                    <span className="flex items-center gap-0.5"><Users className="w-3 h-3"/> {recipesList[hoveredDotIndex]?.serves[0]?.value}</span>
                 </div>
                 {/* Mũi tên trỏ lên */}
                 <div className="absolute -top-1.5 left-1/2 -translate-x-1/2 w-3 h-3 bg-white border-t border-l border-slate-100 rotate-45"></div>
@@ -177,15 +177,15 @@ export function RecipeWidget({ isSearching = true, recipesList , onSaveRecipe}: 
         {/* Recipe Header Info */}
         <div className="flex justify-between items-end">
             <div>
-                <h2 className="text-xl font-bold text-slate-800 tracking-tight">{currentRecipe.title || "No title"}</h2>
+                <h2 className="text-xl font-bold text-slate-800 tracking-tight">{currentRecipe?.title || "No title"}</h2>
                 <div className="flex gap-4 mt-1 text-sm text-slate-500 font-medium">
                 <div className="flex items-center gap-1.5">
                     <Users className="w-4 h-4 text-blue-500" />
-                    <span>Serves {currentRecipe.serves[0].value}</span>
+                    <span>Serves {currentRecipe?.serves[0]?.value}</span>
                 </div>
                 <div className="flex items-center gap-1.5">
                     <Clock className="w-4 h-4 text-blue-500" />
-                    <span>{currentRecipe.cook_time[0].value} {currentRecipe.cook_time[0].unit}</span>
+                    <span>{currentRecipe?.cook_time[0]?.value} {currentRecipe?.cook_time[0]?.unit}</span>
                 </div>
                 </div>
             </div>
@@ -210,7 +210,7 @@ export function RecipeWidget({ isSearching = true, recipesList , onSaveRecipe}: 
             <div>
               <h3 className="text-lg font-bold text-slate-800 mb-4">Ingredients</h3>
               <ul className="space-y-3">
-                {currentRecipe.ingredients.map((ing, idx) => (
+                {currentRecipe?.ingredients.map((ing, idx) => (
                   <li key={idx} className="flex items-start gap-3 text-sm text-slate-700 group">
                     {/* Bullet point màu đỏ custom */}
                     <span className="mt-1.5 w-1.5 h-1.5 rounded-full bg-blue-600 shrink-0 group-hover:scale-125 transition-transform" />
@@ -228,10 +228,10 @@ export function RecipeWidget({ isSearching = true, recipesList , onSaveRecipe}: 
             <div>
               <h3 className="text-lg font-bold text-slate-800 mb-2">Nutritional information</h3>
               <p className="text-xs text-slate-500 leading-relaxed">
-                Per Serve: Energy: {currentRecipe.nutrition_estimate.calories}kJ, 
-                Protein: {currentRecipe.nutrition_estimate.protein}, 
-                Fat: {currentRecipe.nutrition_estimate.fat}, 
-                Sugar: {currentRecipe.nutrition_estimate.sugar}.
+                Per Serve: Energy: {currentRecipe?.nutrition_estimate.calories}kJ, 
+                Protein: {currentRecipe?.nutrition_estimate.protein}, 
+                Fat: {currentRecipe?.nutrition_estimate.fat}, 
+                Sugar: {currentRecipe?.nutrition_estimate.sugar}.
               </p>
               <p className="text-[10px] text-slate-400 mt-2 italic">
                 Nutritional analysis is an estimate only and uses branded products where possible.
@@ -245,7 +245,7 @@ export function RecipeWidget({ isSearching = true, recipesList , onSaveRecipe}: 
             <div>
               <h3 className="text-lg font-bold text-slate-800 mb-4">Method</h3>
               <div className="space-y-6">
-                {currentRecipe.steps.map((step) => (
+                {currentRecipe?.steps.map((step) => (
                   <div key={step.step} className="flex flex-col gap-1">
                     <span className="text-blue-600 font-bold text-sm uppercase tracking-wide">
                       Step {step.step}
@@ -270,7 +270,7 @@ export function RecipeWidget({ isSearching = true, recipesList , onSaveRecipe}: 
                 COOK. STORE. SAVE.
               </p>
               <p className="text-sm text-slate-700 leading-relaxed">
-                {currentRecipe.chef_tips}
+                {currentRecipe?.chef_tips}
               </p>
             </div>
           </div>

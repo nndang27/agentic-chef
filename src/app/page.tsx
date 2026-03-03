@@ -23,22 +23,6 @@ export default async function HomePage() {
 
   return (
     <main className="">
-      {/* <div className="flex flex-wrap gap-4">
-        {posts.map((item) => (
-          <div key={item.id} className="h-48 w-48">
-            <Link href={`/img/${item.id}`}>  
-            <Image
-              src={item.url}
-              style={{ objectFit: "contain" }}
-              width={480}
-              height={480}
-              alt={item.name}
-            />
-            </Link>
-          </div>
-        ))}
-      </div> */}
-
         <div className="min-h-screen bg-slate-50/50">
           <div className="absolute inset-0 -z-10 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-sky-100/40 via-transparent to-transparent opacity-60 pointer-events-none" />
           <Hero />

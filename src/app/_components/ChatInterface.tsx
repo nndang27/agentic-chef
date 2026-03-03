@@ -1,7 +1,7 @@
 import { Button } from "../../components/ui/button";
 import { Input } from "../../components/ui/input";
 import { ScrollArea } from "../../components/ui/scroll-area";
-import { Send, Sparkles, User, Loader2, Square } from "lucide-react"; // Import thêm Loader2
+import { Send, Sparkles, User, Loader2, Square, ChevronUp, ChevronDown , CheckCircle2, Circle} from "lucide-react"; // Import thêm Loader2
 import { useState, useRef, useEffect } from "react";
 import { io, Socket } from "socket.io-client";
 import { Switch } from "../../components/ui/switch"; // Nếu dùng shadcn/ui
@@ -21,6 +21,15 @@ interface ChatInterfaceProps {
   onStop?: () => void;
 }
 
+export interface quickDataType {
+    recipeDish: string | "",
+    videoDish: string | "",
+    priceIngredients: string | "",
+    mapOrigin: string | "",
+    mapDestination: string | "",
+    mapSupermarket: string | ""
+  }
+
 export function ChatInterface({ 
   messages, 
   isGenerating, 
@@ -30,18 +39,24 @@ export function ChatInterface({
   onToggleMemory,
   onStop
 }: ChatInterfaceProps){
+
   const [input, setInput] = useState("");
-
-
-  // const abortControllerRef = useRef<AbortController | null>(null);
-
-  // const [isGenerating, setIsGenerating] = useState(false);
-  
-  // State lưu trạng thái hành động hiện tại của Agent (VD: "Thinking...", "Searching...")
-  // const [agentStatus, setAgentStatus] = useState<string | null>(null);
-  
-
   const lastUserMessageRef = useRef<HTMLDivElement>(null);
+
+  // --- STATE CHO QUICK MODE ---
+  const [isQuickPanelOpen, setIsQuickPanelOpen] = useState(false);
+  const [activeModes, setActiveModes] = useState({
+    RECIPE: false, PRICE: false, MAP: false, VIDEO: false
+  });
+
+  const [quickData, setQuickData] = useState<quickDataType>({
+    recipeDish: "",
+    videoDish: "",
+    priceIngredients: "",
+    mapOrigin: "",
+    mapDestination: "",
+    mapSupermarket: ""
+  });
 
 
   // --- 2. LOGIC SCROLL ---
@@ -58,8 +73,6 @@ export function ChatInterface({
 
   // --- 3. HANDLE SEND ---
   const handleSend = () => {
-      // Chỉ gửi khi có chữ và KHÔNG đang generating
-      // Nếu đang generating mà gọi hàm này thì chặn lại (phòng hờ)
       if (!input.trim()) return;
 
       const userText = input;
@@ -68,6 +81,59 @@ export function ChatInterface({
     };
 
 
+    // Placeholder động cho Price dựa vào Recipe
+  const pricePlaceholder = (activeModes.RECIPE && quickData.recipeDish.trim()) 
+    ? `${quickData.recipeDish} ingredients` 
+    : "e.g., beef, onions, garlic";
+
+  const videoPlaceholder = (activeModes.RECIPE && quickData.recipeDish.trim()) 
+    ? `cooking ${quickData.recipeDish}` 
+    : "Dish name (e.g: pho,..)";
+  // Hàm toggle bật/tắt module
+  const toggleMode = (mode: keyof typeof activeModes) => {
+    setActiveModes(prev => ({ ...prev, [mode]: !prev[mode] }));
+  };
+
+  // Cập nhật dữ liệu input
+  const updateData = (field: keyof typeof quickData, value: string) => {
+  setQuickData(prev => ({ ...prev, [field]: value }));
+  };
+// Hàm xử lý riêng cho nút Enter trên Quick Panel
+  const handleComboSubmit = () => {
+    // Kiểm tra xem có chọn module nào không
+    const selectedModes = Object.keys(activeModes).filter(k => activeModes[k as keyof typeof activeModes]);
+    if (selectedModes.length === 0 || isGenerating) return;
+
+    // 1. Tạo câu chat hiển thị cho đẹp
+    let displayLines = ["⚡ Quick Combo Task:"];
+    if (activeModes.RECIPE) displayLines.push(`- 🍳 Recipe: ${quickData.recipeDish || "Not specified"}`);
+    if (activeModes.VIDEO){
+      const p = quickData.videoDish || (activeModes.RECIPE ? `cooking ${quickData.recipeDish}` : "Not specified");
+      displayLines.push(`- 📺 Video: ${p}`);
+    } 
+    if (activeModes.PRICE) {
+      const p = quickData.priceIngredients || (activeModes.RECIPE ? `Ingredients of ${quickData.recipeDish}` : "All");
+      displayLines.push(`- 💰 Price: ${p}`);
+    }
+    if (activeModes.MAP) {
+      const origin_required = `${quickData.mapOrigin}` || "Your current location"
+      const supermarket_required = `${quickData.mapSupermarket}` || "Coles, Woolworths, Aldi,.."
+      const destination_required = `${quickData.mapDestination}` || ""
+      displayLines.push(`- 📍 Map: ${origin_required} -> ${destination_required} (${supermarket_required})`);
+    }
+
+    const displayMsg = displayLines.join("\n");
+
+    // 2. Gom dữ liệu gửi xuống Backend
+    const payload = {
+      modes: selectedModes, // ["RECIPE", "PRICE"]
+      data: quickData       // Gửi toàn bộ params xuống
+    };
+
+    // 3. Đóng panel, clear input (tuỳ chọn) và gửi
+    setIsQuickPanelOpen(false);
+    onSendMessage(displayMsg, payload.modes, payload.data); 
+  };
 
   return (
     <div className="grid grid-rows-[auto_1fr_auto] h-full bg-slate-50 border-r border-slate-200 overflow-hidden">
@@ -165,29 +231,154 @@ export function ChatInterface({
             </div>
          </ScrollArea>
       </div>
+{/* ------------------- */}
+{/* --- QUICK ACTION PANEL (COMBO MODE) --- */}
+      <div className="relative z-20 w-full bg-white border-t border-slate-200 shadow-[0_-4px_10px_-1px_rgba(0,0,0,0.05)] transition-all duration-300">
+        
+        <button 
+          onClick={() => setIsQuickPanelOpen(!isQuickPanelOpen)}
+          className="absolute -top-6 left-1/2 -translate-x-1/2 h-6 px-6 bg-white border border-slate-200 border-b-0 rounded-t-xl text-slate-400 hover:text-blue-500 transition-colors flex items-center justify-center shadow-[0_-2px_5px_-1px_rgba(0,0,0,0.05)]"
+        >
+          {isQuickPanelOpen ? <ChevronDown className="w-4 h-4" /> : <ChevronUp className="w-4 h-4" />}
+        </button>
+
+        <div className={`overflow-hidden transition-all duration-500 ${isQuickPanelOpen ? "max-h-96 opacity-100" : "max-h-0 opacity-0"}`}>
+          <div className="p-4 grid grid-cols-2 gap-3 bg-slate-50 overflow-y-auto max-h-80">
+            
+            {/* CARD: RECIPE */}
+            <div 
+              className={`p-3 border rounded-xl transition-all cursor-pointer ${activeModes.RECIPE ? "bg-white border-blue-400 shadow-sm ring-1 ring-blue-400/20" : "bg-transparent border-slate-200 opacity-60 hover:opacity-100"}`}
+              onClick={() => toggleMode('RECIPE')}
+            >
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-xs font-bold text-slate-700">🍳 Recipe</span>
+                {activeModes.RECIPE ? <CheckCircle2 className="w-4 h-4 text-blue-500" /> : <Circle className="w-4 h-4 text-slate-300" />}
+              </div>
+              {activeModes.RECIPE && (
+                <div onClick={e => e.stopPropagation()}>
+                  <input 
+                    placeholder={"Dish name (e.g., Spring Roll)"} 
+                    value={quickData.recipeDish}
+                    onChange={(e) => updateData('recipeDish', e.target.value)}
+                    className="w-full text-sm px-3 py-2 bg-slate-50 border rounded-lg focus:outline-none focus:ring-1 focus:ring-blue-500"
+                  />
+                </div>
+              )}
+            </div>
+
+            {/* CARD: VIDEO */}
+            <div 
+              className={`p-3 border rounded-xl transition-all cursor-pointer ${activeModes.VIDEO ? "bg-white border-blue-400 shadow-sm ring-1 ring-blue-400/20" : "bg-transparent border-slate-200 opacity-60 hover:opacity-100"}`}
+              onClick={() => toggleMode('VIDEO')}
+            >
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-xs font-bold text-slate-700">📺 Video</span>
+                {activeModes.VIDEO ? <CheckCircle2 className="w-4 h-4 text-blue-500" /> : <Circle className="w-4 h-4 text-slate-300" />}
+              </div>
+              {activeModes.VIDEO && (
+                <div onClick={e => e.stopPropagation()}>
+                  <input 
+                    placeholder={videoPlaceholder} 
+                    value={quickData.videoDish}
+                    onChange={(e) => updateData('videoDish', e.target.value)}
+                    className="w-full text-sm px-3 py-2 bg-slate-50 border rounded-lg focus:outline-none focus:ring-1 focus:ring-blue-500"
+                  />
+                </div>
+              )}
+            </div>
+
+            {/* CARD: PRICE */}
+            <div 
+              className={`p-3 border rounded-xl transition-all cursor-pointer ${activeModes.PRICE ? "bg-white border-blue-400 shadow-sm ring-1 ring-blue-400/20" : "bg-transparent border-slate-200 opacity-60 hover:opacity-100"}`}
+              onClick={() => toggleMode('PRICE')}
+            >
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-xs font-bold text-slate-700">💰 Price</span>
+                {activeModes.PRICE ? <CheckCircle2 className="w-4 h-4 text-blue-500" /> : <Circle className="w-4 h-4 text-slate-300" />}
+              </div>
+              {activeModes.PRICE && (
+                <div onClick={e => e.stopPropagation()}>
+                  <input 
+                    placeholder={pricePlaceholder} 
+                    value={quickData.priceIngredients}
+                    onChange={(e) => updateData('priceIngredients', e.target.value)}
+                    className="w-full text-sm px-3 py-2 bg-slate-50 border rounded-lg focus:outline-none focus:ring-1 focus:ring-blue-500"
+                  />
+                </div>
+              )}
+            </div>
+
+            {/* CARD: MAP */}
+            <div 
+              className={`p-3 border rounded-xl transition-all cursor-pointer ${activeModes.MAP ? "bg-white border-blue-400 shadow-sm ring-1 ring-blue-400/20" : "bg-transparent border-slate-200 opacity-60 hover:opacity-100"}`}
+              onClick={() => toggleMode('MAP')}
+            >
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-xs font-bold text-slate-700">📍 Map</span>
+                {activeModes.MAP ? <CheckCircle2 className="w-4 h-4 text-blue-500" /> : <Circle className="w-4 h-4 text-slate-300" />}
+              </div>
+              {activeModes.MAP && (
+                <div onClick={e => e.stopPropagation()} className="space-y-2">
+                  <input 
+                    placeholder="Origin " 
+                    value={quickData.mapOrigin}
+                    onChange={(e) => updateData('mapOrigin', e.target.value)}
+                    className="w-full text-sm px-3 py-2 bg-slate-50 border rounded-lg focus:outline-none focus:ring-1 focus:ring-blue-500"
+                  />
+                  <input 
+                    placeholder="Destination" 
+                    value={quickData.mapDestination}
+                    onChange={(e) => updateData('mapDestination', e.target.value)}
+                    className="w-full text-sm px-3 py-2 bg-slate-50 border rounded-lg focus:outline-none focus:ring-1 focus:ring-blue-500"
+                  />
+                  <input 
+                    placeholder="Supermarket(e.g., Coles, Woolies)" 
+                    value={quickData.mapSupermarket}
+                    onChange={(e) => updateData('mapSupermarket', e.target.value)}
+                    className="w-full text-sm px-3 py-2 bg-slate-50 border rounded-lg focus:outline-none focus:ring-1 focus:ring-blue-500"
+                  />
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* NÚT SUBMIT COMBO */}
+          <div className="p-3 bg-white border-t border-slate-200 flex justify-end">
+             <Button 
+                onClick={handleComboSubmit}
+                disabled={isGenerating || !Object.values(activeModes).some(v => v)}
+                className="bg-blue-600 hover:bg-blue-700 text-white rounded-full px-6 font-semibold shadow-md"
+             >
+                ✨ Run Quick Combo
+             </Button>
+          </div>
+        </div>
+      </div>
+
 
       {/* FOOTER */}
       <div className="p-4 bg-white border-t border-slate-200 shrink-0 z-10">
-        {/* CONTAINER CHÍNH: 
-            - Đóng vai trò là cái "hộp" visual (Border, Background, Rounded nằm ở đây)
-            - Dùng flex items-center để căn giữa Input và Button theo trục ngang tuyệt đối.
-        */}
-        <div className="flex items-center w-full h-16 rounded-[32px] border border-slate-200 bg-slate-50 px-2 focus-within:ring-2 focus-within:ring-blue-500/20 focus-within:border-blue-500 transition-all">
-          
+        <div className={`flex items-center w-full h-16 rounded-[32px] border transition-all px-2 ${
+          // activeQuickInput || null 
+          //   ? "bg-slate-100 border-slate-200 opacity-60 pointer-events-none" :// Khóa thanh chat khi đang dùng Quick Panel
+             "bg-slate-50 border-slate-200 focus-within:ring-2 focus-within:ring-blue-500/20 focus-within:border-blue-500"
+        }`}>
               <Input 
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
-                disabled={isGenerating}
+                disabled={isGenerating} // || activeQuickInput !== null
                 onKeyDown={(e) => {
-                  if (e.key === "Enter") {
-                      // @ts-ignore
-                      if (e.nativeEvent.isComposing) return;
+                  if (e.key === "Enter" && !e.nativeEvent.isComposing && !isGenerating) {
                       e.preventDefault();
-                      if (!isGenerating) handleSend();
+                      handleSend();
                   }
                 }}
-                placeholder={isGenerating ? (agentStatus || "Agent is working...") : "Ask anything..."}
-                
+                // placeholder={isGenerating ? (agentStatus || "Agent is working...") : "Ask anything..."}
+                placeholder={
+              isGenerating ? (agentStatus || "Agent is working...") 
+              : "Ask anything..." //: activeQuickInput ? "Quick Search is active..." 
+              //: 
+            }
                 // --- STYLE INPUT MỚI ---
                 // 1. bg-transparent & border-none: Để nó hòa vào container cha
                 // 2. h-full: Chiều cao ăn theo container (100% căn giữa)
